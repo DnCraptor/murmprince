@@ -1,0 +1,45 @@
+GNU GENERAL PUBLIC LICENSE
+Version 3, 29 June 2007
+
+Copyright (c) 2024-2025 Mikhail Matveev <xtreme@outlook.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+THIRD-PARTY LICENSES AND ACKNOWLEDGMENTS
+
+This project incorporates code from the following projects:
+
+1. SDLPoP (https://github.com/NagyD/SDLPoP)
+   Copyright (C) 2013-2024 David Nagy
+   Open-source port of Prince of Persia
+   License: GNU GPL v3
+
+2. FatFs (http://elm-chan.org/fsw/ff/)
+   Copyright (C) 2022 ChaN
+   Generic FAT Filesystem Module
+   License: FatFs License (BSD-style)
+
+3. pico-extras (https://github.com/raspberrypi/pico-extras)
+   Copyright (C) 2020-2023 Raspberry Pi (Trading) Ltd.
+   Audio I2S and additional Pico SDK functionality
+   License: BSD 3-Clause
+
+4. stb_image (https://github.com/nothings/stb)
+   Public domain image loading library
+   License: Public Domain / MIT
+
+The full text of the GNU GPL v3 license can be found at:
+https://www.gnu.org/licenses/gpl-3.0.html
