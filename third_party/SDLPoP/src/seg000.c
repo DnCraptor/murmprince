@@ -2046,11 +2046,17 @@ void show_title() {
 	draw_full_image(TITLE_MAIN);
 	do_wait(timer_0);
 
-	start_timer(timer_0, 0xEB);
+	start_timer(timer_0, 0xEB); // TITLE_POP + TITLE_MECHNER together (original timing)
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
 	draw_full_image(TITLE_POP);
 	draw_full_image(TITLE_MECHNER);
+	do_wait(timer_0);
+
+	start_timer(timer_0, 0x300); // Show "Prince of Persia" logo alone for longer
+	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
+	draw_full_image(TITLE_MAIN);
+	draw_full_image(TITLE_POP);
 	do_wait(timer_0);
 
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
