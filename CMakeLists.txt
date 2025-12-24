@@ -36,6 +36,12 @@ message(STATUS "Board: ${BOARD_VARIANT}, CPU: ${CPU_SPEED} MHz, PSRAM: ${PSRAM_S
 
 include(pico_sdk_import.cmake)
 
+# Import pico-extras for audio_i2s library
+set(PICO_EXTRAS_PATH ${CMAKE_CURRENT_LIST_DIR}/pico-extras CACHE PATH "Path to pico-extras")
+if(EXISTS ${PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
+    include(${PICO_EXTRAS_PATH}/external/pico_extras_import.cmake)
+endif()
+
 project(murmprince C CXX ASM)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 17)
@@ -57,10 +63,16 @@ add_compile_definitions(
 
 pico_sdk_init()
 
+# Initialize pico-extras if available (for audio_i2s)
+if(COMMAND pico_extras_init)
+    pico_extras_init()
+endif()
+
 # FatFS + SD card driver
 add_subdirectory(src/fatfs)
 add_subdirectory(drivers/sdcard)
 add_subdirectory(drivers/ps2kbd)
+add_subdirectory(drivers/audio)
 
 # SDLPoP (vendored)
 file(GLOB SDLPoP_SOURCES CONFIGURE_DEPENDS
@@ -194,17 +206,35 @@ else()
         src/SDL2
         src/fatfs
         drivers
+        drivers/audio
     )
 
     target_compile_definitions(rp_sdl PUBLIC
         POP_RP2350
         RP_SDL_FEATURE_WINDOW=0
         RP_SDL_FEATURE_MESSAGEBOX=0
-        RP_SDL_FEATURE_AUDIO=0
+        RP_SDL_FEATURE_AUDIO=1
         RP_SDL_FEATURE_JOYSTICK=0
         RP_SDL_FEATURE_GAMECONTROLLER=0
         RP_SDL_FEATURE_HAPTIC=0
+        # I2S Audio Configuration
+        PICO_AUDIO_I2S_PIO=0
+        PICO_AUDIO_I2S_DMA_IRQ=1
     )
+
+    # Board-specific I2S pin definitions
+    if(BOARD_VARIANT STREQUAL "M1")
+        target_compile_definitions(rp_sdl PUBLIC
+            PICO_AUDIO_I2S_DATA_PIN=26
+            PICO_AUDIO_I2S_CLOCK_PIN_BASE=27
+        )
+    elseif(BOARD_VARIANT STREQUAL "M2")
+        target_compile_definitions(rp_sdl PUBLIC
+            PICO_AUDIO_I2S_DATA_PIN=9
+            PICO_AUDIO_I2S_CLOCK_PIN_BASE=10
+        )
+    endif()
+
     target_compile_options(rp_sdl PRIVATE -Ofast)
     # SDL_port includes HDMI headers which depend on Pico SDK hardware headers
     # (e.g. hardware/dma.h). Pull these in explicitly so rp_sdl compiles.
@@ -215,6 +245,7 @@ else()
         hardware_pio
         hardware_spi
         hardware_clocks
+        audio_driver
     )
 
     # Make SDLPoP explicitly depend on the rp_sdl shim.

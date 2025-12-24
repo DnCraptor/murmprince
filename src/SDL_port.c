@@ -11,6 +11,11 @@
 
 #include "third_party/stb/stb_image.h"
 
+// Audio support
+#if RP_SDL_FEATURE_AUDIO
+#include "audio/audio_i2s_driver.h"
+#endif
+
 static const char *g_img_error = "SDL_image not implemented";
 static const char *g_sdl_error = "";
 
@@ -1114,6 +1119,11 @@ Uint32 SDL_GetTicks(void) {
 static Uint8 keyboard_state[SDL_NUM_SCANCODES];
 
 int SDL_PollEvent(SDL_Event *event) {
+    // Pump audio buffers on every event poll
+    #if RP_SDL_FEATURE_AUDIO
+    audio_i2s_driver_pump();
+    #endif
+    
     // Poll PS/2 keyboard
     ps2kbd_tick();
     
@@ -1157,19 +1167,99 @@ void SDL_SetWindowIcon(SDL_Window *window, SDL_Surface *icon) { (void)window; (v
 #endif
 
 // -----------------------------------------------------------------------------
-// Audio APIs (intentionally unsupported for now)
+// Audio APIs - I2S output via pico-extras
 // -----------------------------------------------------------------------------
 #if RP_SDL_FEATURE_AUDIO
+
+// Store the current audio spec for callback use
+static SDL_AudioSpec g_audio_spec = {0};
+static bool g_audio_initialized = false;
+static bool g_audio_paused = true;
+
 int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
-    (void)desired;
-    (void)obtained;
-    return -1;
+    if (!desired || !desired->callback) {
+        printf("SDL_OpenAudio: invalid parameters\n");
+        return -1;
+    }
+
+    printf("SDL_OpenAudio: freq=%d ch=%d samples=%d\n",
+           desired->freq, desired->channels, desired->samples);
+
+    // Store the audio spec
+    g_audio_spec = *desired;
+
+    // Initialize the I2S audio driver
+    if (!audio_i2s_driver_init(
+            (uint32_t)desired->freq,
+            desired->channels,
+            (audio_callback_fn)desired->callback,
+            desired->userdata)) {
+        printf("SDL_OpenAudio: audio_i2s_driver_init failed\n");
+        return -1;
+    }
+
+    // Fill in obtained spec if provided
+    if (obtained) {
+        *obtained = *desired;
+        obtained->silence = audio_i2s_driver_get_silence();
+        obtained->size = (Uint32)desired->samples * desired->channels * 2;  // 16-bit samples
+    }
+
+    g_audio_initialized = true;
+    g_audio_paused = true;  // Start paused (SDL convention)
+
+    printf("SDL_OpenAudio: success\n");
+    return 0;
 }
-void SDL_PauseAudio(int pause_on) { (void)pause_on; }
-void SDL_CloseAudio(void) {}
-void SDL_LockAudio(void) {}
-void SDL_UnlockAudio(void) {}
+
+void SDL_PauseAudio(int pause_on) {
+    if (!g_audio_initialized) return;
+
+    if (pause_on) {
+        if (!g_audio_paused) {
+            printf("SDL_PauseAudio: pausing\n");
+            audio_i2s_driver_set_enabled(false);
+            g_audio_paused = true;
+        }
+    } else {
+        if (g_audio_paused) {
+            printf("SDL_PauseAudio: unpausing\n");
+            audio_i2s_driver_set_enabled(true);
+            g_audio_paused = false;
+        }
+    }
+}
+
+void SDL_CloseAudio(void) {
+    if (!g_audio_initialized) return;
+    printf("SDL_CloseAudio\n");
+    audio_i2s_driver_shutdown();
+    g_audio_initialized = false;
+    g_audio_paused = true;
+}
+
+void SDL_LockAudio(void) {
+    if (g_audio_initialized) {
+        audio_i2s_driver_lock();
+    }
+}
+
+void SDL_UnlockAudio(void) {
+    if (g_audio_initialized) {
+        audio_i2s_driver_unlock();
+    }
+}
+
+// This function must be called regularly from the main loop to pump audio
+void SDL_AudioPump(void) {
+    if (g_audio_initialized && !g_audio_paused) {
+        extern void audio_i2s_driver_pump(void);
+        audio_i2s_driver_pump();
+    }
+}
+
 #else
+// Audio disabled - stub implementations
 int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
     (void)desired;
     (void)obtained;
@@ -1180,6 +1270,7 @@ void SDL_PauseAudio(int pause_on) { (void)pause_on; }
 void SDL_CloseAudio(void) {}
 void SDL_LockAudio(void) {}
 void SDL_UnlockAudio(void) {}
+void SDL_AudioPump(void) {}
 #endif
 
 // RWops implementation for memory

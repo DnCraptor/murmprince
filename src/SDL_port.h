@@ -528,6 +528,7 @@ void SDL_PauseAudio(int pause_on);
 void SDL_CloseAudio(void);
 void SDL_LockAudio(void);
 void SDL_UnlockAudio(void);
+void SDL_AudioPump(void);  // RP2350: must be called from main loop to pump audio buffers
 
 #define AUDIO_S16 0x8010
 #define AUDIO_U8 0x0008
