@@ -617,10 +617,9 @@ out:
 	// stub
 	return pointer;
 failed:
-	#ifdef POP_RP2350
-	printf("open_dat failed: %s\n", filename);
+	DBG_PRINTF("open_dat failed: %s\n", filename);
 	if (fp) pop_fs_close(fp);
-	#else
+#ifndef POP_RP2350
 	perror(filename);
 	if (fp)
 		fclose(fp);
@@ -693,7 +692,7 @@ chtab_type* load_sprites_from_file(int resource,int palette_bits, int quit_on_er
 	for (int i = 1; i <= n_images; i++) {
 		#ifdef POP_RP2350
 		if ((i == 1) || ((i & 0x0F) == 0) || (i == n_images)) {
-			printf("[load_sprites_from_file] res %d: %d/%d\n", resource, i, n_images);
+			DBG_PRINTF("[load_sprites_from_file] res %d: %d/%d\n", resource, i, n_images);
 			fflush(stdout);
 		}
 		#endif
@@ -1066,9 +1065,7 @@ static const char* get_sprite_name(int res_id) {
 
 image_type* load_image(int resource_id, dat_pal_type* palette) {
 	// stub
-	#ifdef POP_RP2350
-	printf("[load_image] res=%d (%s)\n", resource_id, get_sprite_name(resource_id));
-	#endif
+	DBG_PRINTF("[load_image] res=%d (%s)\n", resource_id, get_sprite_name(resource_id));
 	
 	data_location result;
 	int size;
@@ -1100,7 +1097,7 @@ image_type* load_image(int resource_id, dat_pal_type* palette) {
 			// We convert them to 8bpp indexed using the same palette as DAT images.
 			// EXCEPTION: Fonts (resource 1000-1255) have n_colors=0 and are monochrome.
 			// They need special handling - convert to 8bpp but use a simple black/white palette.
-			printf("[load_image] res=%d PNG: img=%p bpp=%d pal=%p n_colors=%d\n", 
+			DBG_PRINTF("[load_image] res=%d PNG: img=%p bpp=%d pal=%p n_colors=%d\n", 
 				resource_id, (void*)image, 
 				image ? image->format->BytesPerPixel : 0, 
 				(void*)palette,
@@ -1108,7 +1105,7 @@ image_type* load_image(int resource_id, dat_pal_type* palette) {
 			if (image != NULL && image->format->BytesPerPixel == 4 && palette != NULL) {
 				int w = image->w;
 				int h = image->h;
-				printf("[load_image] res=%d converting RGBA %dx%d to 8bpp\n", resource_id, w, h);
+				DBG_PRINTF("[load_image] res=%d converting RGBA %dx%d to 8bpp\n", resource_id, w, h);
 				// Create 8bpp indexed surface
 				SDL_Surface* indexed = SDL_CreateRGBSurface(0, w, h, 8, 0, 0, 0, 0);
 				if (indexed != NULL) {
@@ -1143,12 +1140,12 @@ image_type* load_image(int resource_id, dat_pal_type* palette) {
 					
 					// Debug: print first few RGBA values for fonts
 					if (is_font && resource_id >= 1076 && resource_id <= 1078) {
-						printf("[load_image] res=%d RGBA row0:", resource_id);
+						DBG_PRINTF("[load_image] res=%d RGBA row0:", resource_id);
 						for (int x = 0; x < w && x < 6; ++x) {
 							uint32_t px = src[x];
-							printf(" %08X", px);
+							DBG_PRINTF(" %08X", px);
 						}
-						printf("\n");
+						DBG_PRINTF("\n");
 					}
 					
 					for (int y = 0; y < h; ++y) {
@@ -1190,9 +1187,9 @@ image_type* load_image(int resource_id, dat_pal_type* palette) {
 					// Replace RGBA surface with indexed surface
 					SDL_FreeSurface(image);
 					image = indexed;
-					printf("[load_image] res=%d converted to 8bpp OK\n", resource_id);
+					DBG_PRINTF("[load_image] res=%d converted to 8bpp OK\n", resource_id);
 				} else {
-					printf("[load_image] res=%d convert FAILED (indexed surface NULL)\n", resource_id);
+					DBG_PRINTF("[load_image] res=%d convert FAILED (indexed surface NULL)\n", resource_id);
 				}
 			}
 #endif
@@ -1215,11 +1212,11 @@ image_type* load_image(int resource_id, dat_pal_type* palette) {
 		if (!image->format->palette && image->format->BytesPerPixel == 4) {
 			// RGBA surface - check the actual alpha values in first few pixels
 			uint32_t* pixels = (uint32_t*)image->pixels;
-			printf("[load_image] res=%d RGBA pixels (hex): ", resource_id);
+			DBG_PRINTF("[load_image] res=%d RGBA pixels (hex): ", resource_id);
 			for (int i = 0; i < 4 && i < image->w * image->h; ++i) {
-				printf("%08x ", pixels[i]);
+				DBG_PRINTF("%08x ", pixels[i]);
 			}
-			printf("\n");
+			DBG_PRINTF("\n");
 		}
 		#endif
 		
@@ -1540,35 +1537,23 @@ extern byte hc_small_font_data[];
 void load_font(void) {
 	// Try to load font from files (DAT and/or data/font directory).
 	const char* const dat_name = "font";
-	#ifdef POP_RP2350
-	printf("[load_font] open_dat(%s)\n", dat_name);
-	#endif
+	DBG_PRINTF("[load_font] open_dat(%s)\n", dat_name);
 	dat_type* dathandle = open_dat(dat_name, 1);
-	#ifdef POP_RP2350
-	printf("[load_font] load_sprites_from_file(1000)\n");
-	#endif
+	DBG_PRINTF("[load_font] load_sprites_from_file(1000)\n");
 	hc_font.chtab = load_sprites_from_file(1000, 1<<1, 0);
-	#ifdef POP_RP2350
-	printf("[load_font] close_dat(%s)\n", dat_name);
-	#endif
+	DBG_PRINTF("[load_font] close_dat(%s)\n", dat_name);
 	close_dat(dathandle);
 	if (hc_font.chtab == NULL) {
 		// Use built-in font.
-		#ifdef POP_RP2350
-		printf("[load_font] falling back to built-in font\n");
-		#endif
+		DBG_PRINTF("[load_font] falling back to built-in font\n");
 		hc_font = load_font_from_data((/*const*/ rawfont_type*)hc_font_data);
 	}
 
 #ifdef USE_MENU
-	#ifdef POP_RP2350
-	printf("[load_font] build small font\n");
-	#endif
+	DBG_PRINTF("[load_font] build small font\n");
 	hc_small_font = load_font_from_data((rawfont_type*)hc_small_font_data);
 #endif
-	#ifdef POP_RP2350
-	printf("[load_font] done\n");
-	#endif
+	DBG_PRINTF("[load_font] done\n");
 
 }
 
@@ -1638,7 +1623,7 @@ int draw_text_character(byte character) {
 	#ifdef POP_RP2350
 	static int rp2350_text_chars = 0;
 	if (rp2350_text_chars < 32) {
-		printf("[draw_text_character] #%d ch=0x%02X\n", rp2350_text_chars, (unsigned)character);
+		DBG_PRINTF("[draw_text_character] #%d ch=0x%02X\n", rp2350_text_chars, (unsigned)character);
 	}
 	++rp2350_text_chars;
 	#endif
@@ -1649,7 +1634,7 @@ int draw_text_character(byte character) {
 		if (image != NULL) {
 			#ifdef POP_RP2350
 			if (rp2350_text_chars < 32) {
-				printf("[draw_text_character] blit ch=0x%02X img=%p %dx%d to (%d,%d)\n",
+				DBG_PRINTF("[draw_text_character] blit ch=0x%02X img=%p %dx%d to (%d,%d)\n",
 					(unsigned)character, image, image->w, image->h,
 					(int)textstate.current_x,
 					(int)(textstate.current_y - font->height_above_baseline));
@@ -1788,7 +1773,7 @@ void show_text(const rect_type* rect_ptr,int x_align,int y_align,const char* tex
 	#ifdef POP_RP2350
 	static int rp2350_show_text_calls = 0;
 	if (rp2350_show_text_calls < 8) {
-		printf("[show_text] enter call=%d text=\"%s\"\n", rp2350_show_text_calls, text ? text : "(null)");
+		DBG_PRINTF("[show_text] enter call=%d text=\"%s\"\n", rp2350_show_text_calls, text ? text : "(null)");
 	}
 	++rp2350_show_text_calls;
 	#endif
@@ -1796,7 +1781,7 @@ void show_text(const rect_type* rect_ptr,int x_align,int y_align,const char* tex
 	#ifdef POP_RP2350
 	static int rp2350_show_text_returns = 0;
 	if (rp2350_show_text_returns < 8) {
-		printf("[show_text] exit ret=%d\n", rp2350_show_text_returns);
+		DBG_PRINTF("[show_text] exit ret=%d\n", rp2350_show_text_returns);
 	}
 	++rp2350_show_text_returns;
 	#endif
@@ -3131,9 +3116,9 @@ void set_gr_mode(byte grmode) {
 		#ifdef POP_RP2350
 		// RP2350: no real window system; also avoid leaking the surface.
 		// (Keeping this simple helps avoid subtle lifetime issues during bring-up.)
-		printf("[set_gr_mode] icon loaded, freeing\n");
+		DBG_PRINTF("[set_gr_mode] icon loaded, freeing\n");
 		SDL_FreeSurface(icon);
-		printf("[set_gr_mode] icon freed\n");
+		DBG_PRINTF("[set_gr_mode] icon freed\n");
 		#else
 		SDL_SetWindowIcon(window_, icon);
 		#endif
@@ -3141,7 +3126,7 @@ void set_gr_mode(byte grmode) {
 
 	#ifdef POP_RP2350
 	// RP2350: skip aspect-ratio/resize logic (depends on SDL renderer/window sizing APIs).
-	printf("[set_gr_mode] after icon, before onscreen surface\n");
+	DBG_PRINTF("[set_gr_mode] after icon, before onscreen surface\n");
 	#else
 	apply_aspect_ratio();
 	window_resized();
@@ -3154,9 +3139,9 @@ void set_gr_mode(byte grmode) {
 	 * The function handling the screen updates is update_screen()
 	 * */
 	#ifdef POP_RP2350
-	printf("[set_gr_mode] SDL_CreateRGBSurface 320x200x8\n");
+	DBG_PRINTF("[set_gr_mode] SDL_CreateRGBSurface 320x200x8\n");
 	onscreen_surface_ = SDL_CreateRGBSurface(SDL_FORCE_FULL_PALETTE, 320, 200, 8, 0, 0, 0, 0);
-	printf("[set_gr_mode] onscreen_surface_=%p\n", onscreen_surface_);
+	DBG_PRINTF("[set_gr_mode] onscreen_surface_=%p\n", onscreen_surface_);
 	#else
 	onscreen_surface_ = SDL_CreateRGBSurface(0, 320, 200, 24, Rmsk, Gmsk, Bmsk, 0);
 	#endif
@@ -3167,7 +3152,7 @@ void set_gr_mode(byte grmode) {
 	#ifdef POP_RP2350
 	// Initialize palette to something non-black until SDLPoP sets the real HC palette.
 	if (onscreen_surface_->format && onscreen_surface_->format->palette) {
-		printf("[set_gr_mode] init temp palette\n");
+		DBG_PRINTF("[set_gr_mode] init temp palette\n");
 		SDL_Color colors[256];
 		for (int i = 0; i < 240; ++i) {
 			colors[i].r = (Uint8)i;
@@ -3180,10 +3165,10 @@ void set_gr_mode(byte grmode) {
 			colors[i].a = 255;
 		}
 		SDL_SetPaletteColors(onscreen_surface_->format->palette, colors, 0, 256);
-		printf("[set_gr_mode] temp palette set\n");
+		DBG_PRINTF("[set_gr_mode] temp palette set\n");
 	}
 	// RP2350 scanout uses our SDL_UpdateTexture shim; no need for overlay/scaling textures.
-	printf("[set_gr_mode] done (RP2350)\n");
+	DBG_PRINTF("[set_gr_mode] done (RP2350)\n");
 	#else
 	init_overlay();
 	init_scaling();
@@ -3200,17 +3185,11 @@ void set_gr_mode(byte grmode) {
 //	}
 	graphics_mode = gmMcgaVga;
 #ifdef USE_TEXT
-	#ifdef POP_RP2350
-	printf("[set_gr_mode] before load_font\n");
-	#endif
+	DBG_PRINTF("[set_gr_mode] before load_font\n");
 	load_font();
-	#ifdef POP_RP2350
-	printf("[set_gr_mode] after load_font\n");
-	#endif
+	DBG_PRINTF("[set_gr_mode] after load_font\n");
 #endif
-	#ifdef POP_RP2350
-	printf("[set_gr_mode] return\n");
-	#endif
+	DBG_PRINTF("[set_gr_mode] return\n");
 }
 
 SDL_Surface* get_final_surface() {
@@ -3679,7 +3658,7 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 	#ifdef POP_RP2350
 	static int rp2350_m3_calls = 0;
 	if (rp2350_m3_calls < 16) {
-		printf("[method_3_blit_mono] #%d img=%p %dx%d bpp=%d dst=(%d,%d) color=%u\n",
+		DBG_PRINTF("[method_3_blit_mono] #%d img=%p %dx%d bpp=%d dst=(%d,%d) color=%u\n",
 			rp2350_m3_calls, image, w, h, image->format->BytesPerPixel, xpos, ypos, (unsigned)color);
 	}
 	++rp2350_m3_calls;
@@ -3711,11 +3690,11 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 		// Debug: check source pixel values and palette state
 		if (rp2350_m3_calls < 3) {
 			// Print first row of raw pixel values
-			printf("[method_3_blit_mono] src row0: ");
+			DBG_PRINTF("[method_3_blit_mono] src row0: ");
 			for (int x = 0; x < w && x < 10; ++x) {
-				printf("%02X ", src_pixels[x]);
+				DBG_PRINTF("%02X ", src_pixels[x]);
 			}
-			printf("\n");
+			DBG_PRINTF("\n");
 			// Count total fg/bg pixels in entire image
 			int fg_total = 0, bg_total = 0;
 			for (int y = 0; y < h; ++y) {
@@ -3725,7 +3704,7 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 					else fg_total++;
 				}
 			}
-			printf("[method_3_blit_mono] src total: fg=%d bg=%d (of %d)\n", fg_total, bg_total, w*h);
+			DBG_PRINTF("[method_3_blit_mono] src total: fg=%d bg=%d (of %d)\n", fg_total, bg_total, w*h);
 		}
 		
 		for (int y = 0; y < h; ++y) {
@@ -3741,13 +3720,13 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 			}
 		}
 		if (rp2350_m3_calls < 16) {
-			printf("[method_3_blit_mono] 8bpp direct blit ok (color_idx=%u)\n", (unsigned)color);
+			DBG_PRINTF("[method_3_blit_mono] 8bpp direct blit ok (color_idx=%u)\n", (unsigned)color);
 		}
 		return image;
 	}
 	// Fall through for 32bpp images or mismatched bpp
 	if (rp2350_m3_calls < 16) {
-		printf("[method_3_blit_mono] WARNING: fallback path (src_bpp=%d dst_bpp=%d)\n", 
+		DBG_PRINTF("[method_3_blit_mono] WARNING: fallback path (src_bpp=%d dst_bpp=%d)\n", 
 			image->format->BytesPerPixel, current_target_surface->format->BytesPerPixel);
 	}
 #endif
@@ -3755,7 +3734,7 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 	SDL_Surface* colored_image = SDL_ConvertSurfaceFormat(image, SDL_PIXELFORMAT_ARGB8888, 0);
 	#ifdef POP_RP2350
 	if (rp2350_m3_calls < 16) {
-		printf("[method_3_blit_mono] converted=%p\n", colored_image);
+		DBG_PRINTF("[method_3_blit_mono] converted=%p\n", colored_image);
 	}
 	#endif
 
@@ -3798,7 +3777,7 @@ image_type* method_3_blit_mono(image_type* image,int xpos,int ypos,int blitter,b
 	}
 	#ifdef POP_RP2350
 	if (rp2350_m3_calls < 16) {
-		printf("[method_3_blit_mono] blit ok\n");
+		DBG_PRINTF("[method_3_blit_mono] blit ok\n");
 	}
 	#endif
 	SDL_FreeSurface(colored_image);
@@ -3997,7 +3976,7 @@ void draw_colored_torch(int color, SDL_Surface* image, int xpos, int ypos) {
 
 image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int blit) {
 	if (image == NULL) {
-		printf("method_6_blit_img_to_scr: image == NULL\n");
+		DBG_PRINTF("method_6_blit_img_to_scr: image == NULL\n");
 		//quit(1);
 		return NULL;
 	}
@@ -4008,7 +3987,7 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 	if (current_target_surface == onscreen_surface_ && ypos >= 192 && ypos < 200) {
 		static int bypass_clip_debug = 0;
 		if (bypass_clip_debug < 50) {
-			printf("[BYPASS_CLIP] blit=0x%02X x=%d y=%d %dx%d bpp=%d (HP at y=194 expected)\n",
+			DBG_PRINTF("[BYPASS_CLIP] blit=0x%02X x=%d y=%d %dx%d bpp=%d (HP at y=194 expected)\n",
 				blit, xpos, ypos, image->w, image->h, image->format->BytesPerPixel);
 			bypass_clip_debug++;
 		}
@@ -4017,7 +3996,7 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 	if (current_target_surface == onscreen_surface_ && ypos < 192 && ypos + image->h > 192) {
 		static int clipped_debug = 0;
 		if (clipped_debug < 20) {
-			printf("[WILL_CLIP] blit=0x%02X x=%d y=%d h=%d -> would reach y=%d, clipping at 192\n",
+			DBG_PRINTF("[WILL_CLIP] blit=0x%02X x=%d y=%d h=%d -> would reach y=%d, clipping at 192\n",
 				blit, xpos, ypos, image->h, ypos + image->h);
 			clipped_debug++;
 		}
@@ -4053,7 +4032,7 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 	int is_indexed = SDL_ISPIXELFORMAT_INDEXED(image->format->format);
 	int show_log = (rp2350_m6_calls < 100) && (image->w < 100 || image->h < 100);  // Show smaller sprites
 	if (show_log) {
-		printf("[method_6] #%d blit=0x%02X idx=%d %dx%d dst=(%d,%d) src=%p\n",
+		DBG_PRINTF("[method_6] #%d blit=0x%02X idx=%d %dx%d dst=(%d,%d) src=%p\n",
 			rp2350_m6_calls, blit, is_indexed,
 			image->w, image->h, xpos, ypos, (void*)image);
 	}
@@ -4074,7 +4053,7 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 	static int rp2350_rgba_debug = 0;
 	// Print for EVERY RGBA sprite with transparency until we see the issue
 	if (rp2350_rgba_debug < 20 && image->format->BytesPerPixel == 4 && blit != blitters_0_no_transp) {
-		printf("[RGBA_TRANSP] blit=0x%02X rgba_to_idx=%d target_fmt=0x%08lx (INDEX8=0x%08lx) target_bpp=%d\n",
+		DBG_PRINTF("[RGBA_TRANSP] blit=0x%02X rgba_to_idx=%d target_fmt=0x%08lx (INDEX8=0x%08lx) target_bpp=%d\n",
 			blit, is_rgba_to_indexed,
 			(unsigned long)current_target_surface->format->format,
 			(unsigned long)SDL_PIXELFORMAT_INDEX8,
@@ -4129,14 +4108,14 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 		#ifdef POP_RP2350
 		static int manual_blit_debug = 0;
 		if (manual_blit_debug < 5 && respect_alpha) {
-			printf("[MANUAL_BLIT] %dx%d respect_alpha=%d amask=0x%08lx pal=%p ncolors=%d\n",
+			DBG_PRINTF("[MANUAL_BLIT] %dx%d respect_alpha=%d amask=0x%08lx pal=%p ncolors=%d\n",
 				copy_w, copy_h, respect_alpha, 
 				(unsigned long)(image->format ? image->format->Amask : 0),
 				(void*)pal, pal ? pal->ncolors : 0);
 			// Print first few pixels
 			if (copy_w > 0 && copy_h > 0) {
 				uint32_t* first_row = (uint32_t*)(src_pixels + src_y * src_pitch) + src_x;
-				printf("[MANUAL_BLIT] first 4 pixels: 0x%08lx 0x%08lx 0x%08lx 0x%08lx\n",
+				DBG_PRINTF("[MANUAL_BLIT] first 4 pixels: 0x%08lx 0x%08lx 0x%08lx 0x%08lx\n",
 					(unsigned long)first_row[0], 
 					copy_w > 1 ? (unsigned long)first_row[1] : 0UL,
 					copy_w > 2 ? (unsigned long)first_row[2] : 0UL,
@@ -4208,7 +4187,7 @@ image_type* method_6_blit_img_to_scr(image_type* image,int xpos,int ypos,int bli
 			#ifdef POP_RP2350
 			static int blit_stats_count = 0;
 			if (blit_stats_count < 10 && respect_alpha) {
-				printf("[BLIT_STATS] written=%d skipped=%d total=%d\n", 
+				DBG_PRINTF("[BLIT_STATS] written=%d skipped=%d total=%d\n", 
 					pixels_written, pixels_skipped, pixels_written + pixels_skipped);
 				blit_stats_count++;
 			}
@@ -4756,7 +4735,7 @@ void set_clip_rect(const rect_type* rect) {
 #ifdef POP_RP2350
 	static int set_clip_debug = 0;
 	if (set_clip_debug < 10 && clip_rect.h < 200) {
-		printf("[SET_CLIP] target=%p clip=(%d,%d,%d,%d)\n", 
+		DBG_PRINTF("[SET_CLIP] target=%p clip=(%d,%d,%d,%d)\n", 
 			(void*)current_target_surface, clip_rect.x, clip_rect.y, clip_rect.w, clip_rect.h);
 		set_clip_debug++;
 	}

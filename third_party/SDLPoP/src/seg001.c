@@ -163,7 +163,7 @@ void play_opp_seq() {
 static int proom_debug_count = 0;
 void draw_princess_room_bg() {
 	if (proom_debug_count < 5) {
-		printf("[CUTSCENE] draw_princess_room_bg: START (call #%d)\n", proom_debug_count);
+		DBG_PRINTF("[CUTSCENE] draw_princess_room_bg: START (call #%d)\n", proom_debug_count);
 	}
 	proom_debug_count++;
 	memset(table_counts, 0, sizeof(table_counts));
@@ -184,7 +184,7 @@ void draw_princess_room_bg() {
 	princess_room_torch();
 	draw_hourglass();
 	if (proom_debug_count <= 5) {
-		printf("[CUTSCENE] draw_princess_room_bg: calling draw_tables()\n");
+		DBG_PRINTF("[CUTSCENE] draw_princess_room_bg: calling draw_tables()\n");
 	}
 	draw_tables();
 }
@@ -433,12 +433,12 @@ void cutscene_2_6() {
 
 // seg001:05EC
 void pv_scene() {
-	printf("[CUTSCENE] pv_scene: START\n");
-	printf("[CUTSCENE] pv_scene: init_princess()\n");
+	DBG_PRINTF("[CUTSCENE] pv_scene: START\n");
+	DBG_PRINTF("[CUTSCENE] pv_scene: init_princess()\n");
 	init_princess();
-	printf("[CUTSCENE] pv_scene: saveshad()\n");
+	DBG_PRINTF("[CUTSCENE] pv_scene: saveshad()\n");
 	saveshad();
-	printf("[CUTSCENE] pv_scene: calling fade_in_1()\n");
+	DBG_PRINTF("[CUTSCENE] pv_scene: calling fade_in_1()\n");
 	if (fade_in_1()) return;
 	init_vizier();
 	savekid();
@@ -700,18 +700,18 @@ void load_intro(int which_imgs,cutscene_ptr_type func,int free_sounds) {
 	
 	// Blit the room background (320x200)
 	image_type* room_img = get_image(id_chtab_8_princessroom, 0);
-	printf("[CUTSCENE] load_intro: room_img=%p (expect 320x200)\n", (void*)room_img);
+	DBG_PRINTF("[CUTSCENE] load_intro: room_img=%p (expect 320x200)\n", (void*)room_img);
 	if (room_img) {
-		printf("[CUTSCENE] load_intro: room is %dx%d bpp=%d\n", room_img->w, room_img->h, room_img->format->BytesPerPixel);
+		DBG_PRINTF("[CUTSCENE] load_intro: room is %dx%d bpp=%d\n", room_img->w, room_img->h, room_img->format->BytesPerPixel);
 	}
 	method_6_blit_img_to_scr(room_img, 0, 0, 0);
-	printf("[CUTSCENE] load_intro: room blitted to offscreen at (0,0)\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: room blitted to offscreen at (0,0)\n");
 	
 	// Blit the bed overlay (240x41)
 	image_type* bed_img = get_image(id_chtab_9_princessbed, 0);
-	printf("[CUTSCENE] load_intro: bed_img=%p (expect 240x41)\n", (void*)bed_img);
+	DBG_PRINTF("[CUTSCENE] load_intro: bed_img=%p (expect 240x41)\n", (void*)bed_img);
 	method_6_blit_img_to_scr(bed_img, 0, 142, blitters_2_or);
-	printf("[CUTSCENE] load_intro: bed blitted to offscreen at (0,142)\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: bed blitted to offscreen at (0,142)\n");
 
 	// Free the images that are not needed anymore.
 	free_all_chtabs_from(id_chtab_9_princessbed);
@@ -728,23 +728,23 @@ void load_intro(int which_imgs,cutscene_ptr_type func,int free_sounds) {
 	// IMPORTANT: Copy the static background to onscreen AND to HDMI buffer NOW
 	// then set fade to full black. This ensures the complete scene (background + characters)
 	// is in the HDMI buffer before we start fading, and nothing is visible yet.
-	printf("[CUTSCENE] load_intro: copying offscreen to onscreen and HDMI\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: copying offscreen to onscreen and HDMI\n");
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &screen_rect, &screen_rect, 0);
 	SDL_UpdateTexture(NULL, NULL, onscreen_surface_->pixels, onscreen_surface_->pitch);
-	printf("[CUTSCENE] load_intro: setting fade to 0x40 (full black)\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: setting fade to 0x40 (full black)\n");
 	graphics_set_fade_level(0x40, 0);  // Set to full black NOW, before sound wait loop
 #endif
 	current_target_surface = onscreen_surface_;
-	printf("[CUTSCENE] load_intro: entering sound wait loop\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: entering sound wait loop\n");
 	while (check_sound_playing()) {
 		idle();
 		do_paused();
 		delay_ticks(1);
 	}
-	printf("[CUTSCENE] load_intro: sound wait done, calling reset_cutscene\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: sound wait done, calling reset_cutscene\n");
 	need_drects = 1;
 	reset_cutscene();
-	printf("[CUTSCENE] load_intro: calling func() (pv_scene)\n");
+	DBG_PRINTF("[CUTSCENE] load_intro: calling func() (pv_scene)\n");
 	is_cutscene = 1;
 	func();
 	is_cutscene = 0;

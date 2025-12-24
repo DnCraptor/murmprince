@@ -1156,7 +1156,7 @@ void add_mob_to_objtable(int ypos) {
 	objtable_type* curr_obj;
 	word index = objtable_count++;
 	if (index >= 50) {
-		printf("[add_mob_to_objtable] OVERFLOW! index=%d\n", index);
+		DBG_PRINTF("[add_mob_to_objtable] OVERFLOW! index=%d\n", index);
 		objtable_count = 50; // clamp
 		return;
 	}

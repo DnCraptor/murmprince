@@ -39,9 +39,7 @@ void fix_sound_priorities(void);
 
 // seg000:0000
 void pop_main() {
-	#ifdef POP_RP2350
-	printf("[pop_main] enter\n");
-	#endif
+	DBG_PRINTF("[pop_main] enter\n");
 	if (check_param("--version") || check_param("-v")) {
 		printf ("SDLPoP v%s\n", SDLPOP_VERSION);
 		exit(0);
@@ -67,13 +65,9 @@ void pop_main() {
 	fix_sound_priorities();
 #endif
 
-	#ifdef POP_RP2350
-	printf("[pop_main] load_global_options\n");
-	#endif
+	DBG_PRINTF("[pop_main] load_global_options\n");
 	load_global_options();
-	#ifdef POP_RP2350
-	printf("[pop_main] check_mod_param\n");
-	#endif
+	DBG_PRINTF("[pop_main] check_mod_param\n");
 	check_mod_param();
 #ifdef USE_MENU
 	load_ingame_settings();
@@ -98,27 +92,17 @@ void pop_main() {
 #endif
 
 	// Initialize everything before load_mod_options() so it can show an error dialog if needed.
-	#ifdef POP_RP2350
-	printf("[pop_main] parse_grmode\n");
-	#endif
+	DBG_PRINTF("[pop_main] parse_grmode\n");
 	/*video_mode =*/ parse_grmode();
-	#ifdef POP_RP2350
-	printf("[pop_main] set_hc_pal\n");
-	#endif
+	DBG_PRINTF("[pop_main] set_hc_pal\n");
 	current_target_surface = rect_sthg(onscreen_surface_, &screen_rect);
 	set_hc_pal();
-	#ifdef POP_RP2350
-	printf("[pop_main] init_copyprot_dialog\n");
-	#endif
+	DBG_PRINTF("[pop_main] init_copyprot_dialog\n");
 	init_copyprot_dialog();
-	#ifdef POP_RP2350
-	printf("[pop_main] load_mod_options\n");
-	#endif
+	DBG_PRINTF("[pop_main] load_mod_options\n");
 
 	load_mod_options();
-	#ifdef POP_RP2350
-	printf("[pop_main] apply_seqtbl_patches\n");
-	#endif
+	DBG_PRINTF("[pop_main] apply_seqtbl_patches\n");
 
 	// CusPop option
 	is_blind_mode = custom->start_in_blind_mode;
@@ -129,26 +113,18 @@ void pop_main() {
 
 	char sprintf_temp[100];
 
-	#ifdef POP_RP2350
-	printf("[pop_main] init_timer\n");
-	#endif
+	DBG_PRINTF("[pop_main] init_timer\n");
 	init_timer(BASE_FPS);
-	#ifdef POP_RP2350
-	printf("[pop_main] parse_cmdline_sound\n");
-	#endif
+	DBG_PRINTF("[pop_main] parse_cmdline_sound\n");
 	parse_cmdline_sound();
-	#ifdef POP_RP2350
-	printf("[pop_main] show_loading\n");
-	#endif
+	DBG_PRINTF("[pop_main] show_loading\n");
 
 	#ifdef POP_RP2350
 	// Ensure rendering target is set before show_loading() tries to draw
 	current_target_surface = onscreen_surface_;
 	#endif
 	show_loading();
-	#ifdef POP_RP2350
-	printf("[pop_main] set_joy_mode\n");
-	#endif
+	DBG_PRINTF("[pop_main] set_joy_mode\n");
 	set_joy_mode();
 	cheats_enabled = check_param("megahit") != NULL;
 #ifdef USE_DEBUG_CHEATS
@@ -163,15 +139,11 @@ void pop_main() {
 #endif
 
 	// I moved this after init_copyprot_dialog(), so open_dat() can show an error dialog if needed.
-	#ifdef POP_RP2350
-	printf("[pop_main] open_dat PRINCE.DAT\n");
-	#endif
+	DBG_PRINTF("[pop_main] open_dat PRINCE.DAT\n");
 	dathandle = open_dat("PRINCE.DAT", 'G');
-	#ifdef POP_RP2350
-	printf("[pop_main] open_dat done (handle=%p table=%p)\n",
+	DBG_PRINTF("[pop_main] open_dat done (handle=%p table=%p)\n",
 		(dathandle ? dathandle->handle : NULL),
 		(dathandle ? (void*)dathandle->dat_table : NULL));
-	#endif
 
 	if (cheats_enabled
 		#ifdef USE_REPLAY
@@ -204,9 +176,7 @@ byte* level_var_palettes;
 
 // seg000:024F
 void init_game_main() {
-	#ifdef POP_RP2350
-	printf("[init_game_main] enter\n");
-	#endif
+	DBG_PRINTF("[init_game_main] enter\n");
 	doorlink1_ad = /*&*/level.doorlinks1;
 	doorlink2_ad = /*&*/level.doorlinks2;
 	prandom(1);
@@ -222,14 +192,10 @@ void init_game_main() {
 		level_var_palettes = load_from_opendats_alloc(20, "bin", NULL, NULL);
 	}
 	// PRINCE.DAT: sword
-	#ifdef POP_RP2350
-	printf("[init_game_main] load sword chtab\n");
-	#endif
+	DBG_PRINTF("[init_game_main] load sword chtab\n");
 	chtab_addrs[id_chtab_0_sword] = load_sprites_from_file(700, 1<<2, 1);
 	// PRINCE.DAT: flame, sword on floor, potion
-	#ifdef POP_RP2350
-	printf("[init_game_main] load flame/potion chtab\n");
-	#endif
+	DBG_PRINTF("[init_game_main] load flame/potion chtab\n");
 	chtab_addrs[id_chtab_1_flameswordpotion] = load_sprites_from_file(150, 1<<3, 1);
 	close_dat(dathandle);
 #ifdef USE_LIGHTING
@@ -2449,18 +2415,11 @@ void show_copyprot(int where) {
 
 // seg000:2489
 void show_loading() {
-	#ifdef POP_RP2350
-	// Use the normal loading text; palette is now driven to HDMI.
-	printf("[show_loading] enter\n");
-	#endif
+	DBG_PRINTF("[show_loading] enter\n");
 	show_text(&screen_rect, halign_center, valign_middle, "Loading. . . .");
-	#ifdef POP_RP2350
-	printf("[show_loading] after show_text\n");
-	#endif
+	DBG_PRINTF("[show_loading] after show_text\n");
 	update_screen();
-	#ifdef POP_RP2350
-	printf("[show_loading] after update_screen\n");
-	#endif
+	DBG_PRINTF("[show_loading] after update_screen\n");
 }
 
 // data:42C4

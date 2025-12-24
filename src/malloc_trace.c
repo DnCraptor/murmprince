@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "board_config.h"
 
 // Linker wrappers enabled via -Wl,--wrap=...
 void *__real_malloc(size_t size);
@@ -25,7 +26,7 @@ static inline void rp2350_trace_alloc_if_interesting(const char *kind, size_t by
 
     g_malloc_trace_in_hook = 1;
     void *pc = rp2350_caller_pc();
-    printf("MALLOC_TRACE: %s bytes=%u ptr=%p caller=%p\n", kind, (unsigned)bytes, ptr, pc);
+    DBG_PRINTF("MALLOC_TRACE: %s bytes=%u ptr=%p caller=%p\\n", kind, (unsigned)bytes, ptr, pc);
     g_malloc_trace_in_hook = 0;
 }
 

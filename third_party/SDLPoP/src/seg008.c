@@ -1102,7 +1102,7 @@ void draw_mid(int index) {
 		rect_type game_area_clip = {0, 0, 192, 320};
 		static int draw_mid_clip_debug = 0;
 		if (draw_mid_clip_debug < 20 && ypos + image->h > 180) {
-			printf("[DRAW_MID_CLIP] chtab=%d ypos=%d h=%d setting game_area_clip\n", 
+			DBG_PRINTF("[DRAW_MID_CLIP] chtab=%d ypos=%d h=%d setting game_area_clip\n", 
 				chtab_id, ypos, image->h);
 			draw_mid_clip_debug++;
 		}
@@ -1461,7 +1461,7 @@ void draw_tile_wipe(byte height) {
 static int draw_tables_debug_count = 0;
 void draw_tables() {
 	if (draw_tables_debug_count < 5) {
-		printf("[CUTSCENE] draw_tables: START (call #%d)\n", draw_tables_debug_count);
+		DBG_PRINTF("[CUTSCENE] draw_tables: START (call #%d)\n", draw_tables_debug_count);
 	}
 	draw_tables_debug_count++;
 	drects_count = 0;

@@ -82,11 +82,11 @@ static struct audio_buffer_format producer_format = {
 bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
                            audio_callback_fn callback, void *userdata) {
     if (audio_state.initialized) {
-        printf("audio_i2s_driver: already initialized\n");
+        DBG_PRINTF("audio_i2s_driver: already initialized\n");
         return false;
     }
 
-    printf("audio_i2s_driver: initializing (rate=%lu, ch=%d)\n",
+    DBG_PRINTF("audio_i2s_driver: initializing (rate=%lu, ch=%d)\n",
            sample_rate, channels);
 
     // Store configuration
@@ -111,7 +111,7 @@ bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
     );
 
     if (!audio_state.producer_pool) {
-        printf("audio_i2s_driver: failed to create producer pool\n");
+        DBG_PRINTF("audio_i2s_driver: failed to create producer pool\n");
         return false;
     }
 
@@ -123,9 +123,9 @@ bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
         .pio_sm = AUDIO_I2S_SM,
     };
 
-    printf("audio_i2s_driver: I2S pins DATA=%d, CLK_BASE=%d\n",
+    DBG_PRINTF("audio_i2s_driver: I2S pins DATA=%d, CLK_BASE=%d\n",
            config.data_pin, config.clock_pin_base);
-    printf("audio_i2s_driver: PIO%d SM%d, DMA ch%d, IRQ%d\n",
+    DBG_PRINTF("audio_i2s_driver: PIO%d SM%d, DMA ch%d, IRQ%d\n",
            AUDIO_I2S_PIO, AUDIO_I2S_SM,
            AUDIO_I2S_DMA_CHANNEL, AUDIO_I2S_DMA_IRQ);
 
@@ -134,7 +134,7 @@ bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
     output_format = audio_i2s_setup(&audio_format, &config);
 
     if (!output_format) {
-        printf("audio_i2s_driver: audio_i2s_setup failed\n");
+        DBG_PRINTF("audio_i2s_driver: audio_i2s_setup failed\n");
         return false;
     }
 
@@ -146,7 +146,7 @@ bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
     // Connect audio pipeline (pass-through, no internal buffering)
     bool ok = audio_i2s_connect_extra(audio_state.producer_pool, false, 0, 0, NULL);
     if (!ok) {
-        printf("audio_i2s_driver: audio_i2s_connect_extra failed\n");
+        DBG_PRINTF("audio_i2s_driver: audio_i2s_connect_extra failed\n");
         return false;
     }
 
@@ -156,7 +156,7 @@ bool audio_i2s_driver_init(uint32_t sample_rate, uint8_t channels,
     audio_state.initialized = true;
     audio_state.enabled = false;  // Paused until SDL_PauseAudio(0)
 
-    printf("audio_i2s_driver: initialization complete\n");
+    DBG_PRINTF("audio_i2s_driver: initialization complete\n");
     return true;
 }
 
@@ -164,10 +164,10 @@ void audio_i2s_driver_set_enabled(bool enable) {
     if (!audio_state.initialized) return;
 
     if (enable && !audio_state.enabled) {
-        printf("audio_i2s_driver: unpausing audio\n");
+        DBG_PRINTF("audio_i2s_driver: unpausing audio\n");
         audio_state.enabled = true;
     } else if (!enable && audio_state.enabled) {
-        printf("audio_i2s_driver: pausing audio\n");
+        DBG_PRINTF("audio_i2s_driver: pausing audio\n");
         audio_state.enabled = false;
     }
 }
@@ -179,7 +179,7 @@ bool audio_i2s_driver_is_enabled(void) {
 void audio_i2s_driver_shutdown(void) {
     if (!audio_state.initialized) return;
 
-    printf("audio_i2s_driver: shutting down\n");
+    DBG_PRINTF("audio_i2s_driver: shutting down\n");
     audio_state.enabled = false;
     audio_i2s_set_enabled(false);
     audio_state.initialized = false;

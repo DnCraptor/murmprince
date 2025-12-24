@@ -61,6 +61,16 @@ extern "C" {
 #include "proto.h"
 #include "data.h"
 
+/* Debug output macro - controlled by MURMPRINCE_DEBUG in board_config.h */
+#ifdef POP_RP2350
+#include "board_config.h"
+#if MURMPRINCE_DEBUG
+#define DBG_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define DBG_PRINTF(...) ((void)0)
+#endif
+#endif
+
 #ifndef MAX
 #define MAX(a,b) ((a)>(b)?(a):(b))
 #endif

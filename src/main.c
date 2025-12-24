@@ -137,11 +137,13 @@ int main(void) {
     // This keeps the serial device available while avoiding early console chatter.
     sleep_ms(3000);
 
-    printf("murmprince - RP2350 SDLPoP bootstrap\n");
-    printf("System Clock: %lu MHz\n", clock_get_hz(clk_sys) / 1000000);
-        printf("Build flags: RP2350_BOOT_TEST_PATTERN=%d RP2350_BOOT_TEST_PATTERN_HALT=%d\n",
-            (int)RP2350_BOOT_TEST_PATTERN, (int)RP2350_BOOT_TEST_PATTERN_HALT);
-        printf("Build flags: RP2350_BOOT_TEST_PATTERN_MODE=%d\n", (int)RP2350_BOOT_TEST_PATTERN_MODE);
+    DBG_PRINTF("murmprince - RP2350 SDLPoP bootstrap\n");
+    DBG_PRINTF("System Clock: %lu MHz\n", clock_get_hz(clk_sys) / 1000000);
+#if MURMPRINCE_DEBUG
+    DBG_PRINTF("Build flags: RP2350_BOOT_TEST_PATTERN=%d RP2350_BOOT_TEST_PATTERN_HALT=%d\n",
+        (int)RP2350_BOOT_TEST_PATTERN, (int)RP2350_BOOT_TEST_PATTERN_HALT);
+    DBG_PRINTF("Build flags: RP2350_BOOT_TEST_PATTERN_MODE=%d\n", (int)RP2350_BOOT_TEST_PATTERN_MODE);
+#endif
 
     // PSRAM init (CS1)
     uint psram_pin = get_psram_pin();
@@ -159,14 +161,14 @@ int main(void) {
 
 #if RP2350_BOOT_TEST_PATTERN
     if (RP2350_BOOT_TEST_PATTERN_MODE == 1) {
-        printf("BOOT TEST PATTERN: displaying 0..239 ramp + grayscale palette\n");
+        DBG_PRINTF("BOOT TEST PATTERN: displaying 0..239 ramp + grayscale palette\n");
         rp2350_setup_grayscale_palette_0_239();
     } else {
-        printf("BOOT TEST PATTERN: displaying 16-color checker\n");
+        DBG_PRINTF("BOOT TEST PATTERN: displaying 16-color checker\n");
     }
     rp2350_draw_boot_test_pattern(graphics_buffer, FRAME_W, FRAME_H);
     if (RP2350_BOOT_TEST_PATTERN_HALT) {
-        printf("BOOT TEST PATTERN: halting (disable RP2350_BOOT_TEST_PATTERN_HALT to continue)\n");
+        DBG_PRINTF("BOOT TEST PATTERN: halting (disable RP2350_BOOT_TEST_PATTERN_HALT to continue)\n");
         while (true) {
             tight_loop_contents();
         }
@@ -174,7 +176,7 @@ int main(void) {
     sleep_ms(2000);
 #endif
 
-    printf("Mounting SD...\n");
+    DBG_PRINTF("Mounting SD...\n");
     if (!pop_fs_init()) {
         printf("SD mount failed. Halting.\n");
         while (true) {
@@ -182,10 +184,10 @@ int main(void) {
         }
     }
 
-    printf("Initializing PS/2 keyboard...\n");
+    DBG_PRINTF("Initializing PS/2 keyboard...\n");
     ps2kbd_init();
 
-    printf("Starting SDLPoP...\n");
+    DBG_PRINTF("Starting SDLPoP...\n");
     char *argv[] = {"prince", NULL};
     int rc = sdlpop_entry(1, argv);
     printf("SDLPoP exited (rc=%d). Halting.\n", rc);

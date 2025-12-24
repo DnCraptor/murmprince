@@ -1,5 +1,5 @@
 #include "psram_allocator.h"
-#include "psram_allocator.h"
+#include "../src/board_config.h"
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -99,7 +99,7 @@ void *psram_malloc(size_t size) {
 
     if (psram_temp_mode) {
         if (psram_temp_offset + total_size > TEMP_SIZE) {
-            printf("PSRAM Temp OOM! Req %d, free %d\n", (int)size, (int)(TEMP_SIZE - psram_temp_offset));
+            DBG_PRINTF("PSRAM Temp OOM! Req %d, free %d\n", (int)size, (int)(TEMP_SIZE - psram_temp_offset));
             spin_unlock(psram_lock, save);
             return NULL;
         }
@@ -111,7 +111,7 @@ void *psram_malloc(size_t size) {
         return ptr;
     } else {
         if (psram_offset + total_size > PERM_SIZE) {
-            printf("PSRAM Perm OOM! Req %d, free %d\n", (int)size, (int)(PERM_SIZE - psram_offset));
+            DBG_PRINTF("PSRAM Perm OOM! Req %d, free %d\n", (int)size, (int)(PERM_SIZE - psram_offset));
             spin_unlock(psram_lock, save);
             return NULL;
         }
@@ -167,7 +167,7 @@ void *psram_get_scratch_2(size_t size) {
 
 void *psram_get_file_buffer(size_t size) {
     if (size > 256 * 1024) {
-        printf("PSRAM File Buffer too small! Req: %d\n", (int)size);
+        DBG_PRINTF("PSRAM File Buffer too small! Req: %d\n", (int)size);
         return NULL;
     }
     return psram_start + (256 * 1024);
@@ -191,18 +191,18 @@ void psram_reset(void) {
 
 void psram_mark_session(void) {
     psram_session_mark = psram_offset;
-    printf("PSRAM: Session marked at offset %d (%.2f MB used)\n", 
+    DBG_PRINTF("PSRAM: Session marked at offset %d (%.2f MB used)\n", 
            (int)psram_session_mark, psram_session_mark / (1024.0 * 1024.0));
 }
 
 void psram_restore_session(void) {
     if (psram_session_mark == 0) {
-        printf("PSRAM: Warning - no session mark set, cannot restore\n");
+        DBG_PRINTF("PSRAM: Warning - no session mark set, cannot restore\n");
         return;
     }
     size_t freed = psram_offset - psram_session_mark;
     psram_offset = psram_session_mark;
     psram_temp_offset = 0;
-    printf("PSRAM: Session restored to offset %d (freed %.2f MB)\n",
+    DBG_PRINTF("PSRAM: Session restored to offset %d (freed %.2f MB)\n",
            (int)psram_offset, freed / (1024.0 * 1024.0));
 }

@@ -1,5 +1,6 @@
 #include "SDL_port.h"
 #include "rp_sdl_config.h"
+#include "board_config.h"
 #include "HDMI.h"
 #include "pico/stdlib.h"
 #include <stdlib.h>
@@ -53,7 +54,7 @@ static inline void rp2350_fixup_onscreen_surface_format(SDL_Surface *s, const ch
     static bool printed = false;
     if (!printed) {
         printed = true;
-        printf("RP2350_FIXUP: onscreen surface format corrected in %s (BitsPerPixel=%d BytesPerPixel=%d fmt=%lu pal=%p)\n",
+        DBG_PRINTF("RP2350_FIXUP: onscreen surface format corrected in %s (BitsPerPixel=%d BytesPerPixel=%d fmt=%lu pal=%p)\n",
                who ? who : "?", bpp_bits, bpp_bytes, (unsigned long)s->format->format, (void*)s->format->palette);
     }
 
@@ -69,13 +70,13 @@ static inline void rp2350_fixup_onscreen_surface_format(SDL_Surface *s, const ch
 static SDL_Palette *SDL_CreatePaletteInternal(int ncolors) {
     SDL_Palette *pal = (SDL_Palette *)psram_malloc(sizeof(SDL_Palette));
     if (!pal) {
-        printf("SDL_CreatePalette: psram_malloc(SDL_Palette) failed\n");
+        DBG_PRINTF("SDL_CreatePalette: psram_malloc(SDL_Palette) failed\n");
         return NULL;
     }
 
     pal->colors = (SDL_Color *)psram_malloc(sizeof(SDL_Color) * ncolors);
     if (!pal->colors) {
-        printf("SDL_CreatePalette: psram_malloc(colors) failed (ncolors=%d)\n", ncolors);
+        DBG_PRINTF("SDL_CreatePalette: psram_malloc(colors) failed (ncolors=%d)\n", ncolors);
         psram_free(pal);
         return NULL;
     }
@@ -178,7 +179,7 @@ int SDL_InitSubSystem(Uint32 flags) {
 }
 
 void SDL_Quit(void) {
-    printf("SDL_Quit called\n");
+    DBG_PRINTF("SDL_Quit called\n");
     // Blink LED rapidly to indicate quit
     gpio_init(25);
     gpio_set_dir(25, GPIO_OUT);
@@ -199,7 +200,7 @@ SDL_Window *SDL_CreateWindow(const char *title, int x, int y, int w, int h, Uint
     static bool printed = false;
     if (!printed) {
         printed = true;
-        printf("SDL_CreateWindow: title=%s size=%dx%d flags=0x%lx\n", title ? title : "(null)", w, h, (unsigned long)flags);
+        DBG_PRINTF("SDL_CreateWindow: title=%s size=%dx%d flags=0x%lx\n", title ? title : "(null)", w, h, (unsigned long)flags);
     }
     return (SDL_Window *)1; // Dummy pointer
 }
@@ -208,7 +209,7 @@ SDL_Renderer *SDL_CreateRenderer(SDL_Window *window, int index, Uint32 flags) {
     static bool printed = false;
     if (!printed) {
         printed = true;
-        printf("SDL_CreateRenderer: index=%d flags=0x%lx\n", index, (unsigned long)flags);
+        DBG_PRINTF("SDL_CreateRenderer: index=%d flags=0x%lx\n", index, (unsigned long)flags);
     }
     return (SDL_Renderer *)1; // Dummy pointer
 }
@@ -239,7 +240,7 @@ SDL_Surface *SDL_CreateRGBSurface(Uint32 flags, int width, int height, int depth
     // Allocate everything in PSRAM to avoid SRAM OOM panics.
     SDL_Surface *s = (SDL_Surface *)psram_malloc(sizeof(SDL_Surface));
     if (!s) {
-        printf("SDL_CreateRGBSurface: psram_malloc(SDL_Surface) failed\n");
+        DBG_PRINTF("SDL_CreateRGBSurface: psram_malloc(SDL_Surface) failed\n");
         return NULL;
     }
 
@@ -249,7 +250,7 @@ SDL_Surface *SDL_CreateRGBSurface(Uint32 flags, int width, int height, int depth
     
     s->format = (SDL_PixelFormat *)psram_malloc(sizeof(SDL_PixelFormat));
     if (!s->format) {
-        printf("SDL_CreateRGBSurface: psram_malloc(SDL_PixelFormat) failed\n");
+        DBG_PRINTF("SDL_CreateRGBSurface: psram_malloc(SDL_PixelFormat) failed\n");
         psram_free(s);
         return NULL;
     }
@@ -326,11 +327,11 @@ SDL_Surface *SDL_CreateRGBSurface(Uint32 flags, int width, int height, int depth
             memset(s->pixels, 0, (size_t)s->pitch * (size_t)height);
             if (!g_pop_onscreen_pixels_printed) {
                 g_pop_onscreen_pixels_printed = true;
-                printf("SDL_CreateRGBSurface: onscreen pixels pinned to SRAM (pixels=%p pitch=%d flags=0x%lx force_full_palette=%d)\n",
+                DBG_PRINTF("SDL_CreateRGBSurface: onscreen pixels pinned to SRAM (pixels=%p pitch=%d flags=0x%lx force_full_palette=%d)\n",
                        s->pixels, s->pitch, (unsigned long)flags, force_full_palette ? 1 : 0);
             }
         } else {
-            printf("SDL_CreateRGBSurface: onscreen SRAM pixels already in use; falling back to PSRAM\n");
+            DBG_PRINTF("SDL_CreateRGBSurface: onscreen SRAM pixels already in use; falling back to PSRAM\n");
             s->pixels = psram_malloc((size_t)s->pitch * (size_t)height);
         }
     } else {
@@ -341,7 +342,7 @@ SDL_Surface *SDL_CreateRGBSurface(Uint32 flags, int width, int height, int depth
     s->pixels = psram_malloc((size_t)s->pitch * (size_t)height);
 #endif
     if (!s->pixels) {
-        printf("SDL_CreateRGBSurface: psram_malloc(pixels) failed. Size: %d\n", s->pitch * height);
+        DBG_PRINTF("SDL_CreateRGBSurface: psram_malloc(pixels) failed. Size: %d\n", s->pitch * height);
         if (s->format->palette) SDL_PaletteRelease(s->format->palette);
         psram_free(s->format);
         psram_free(s);
@@ -552,7 +553,7 @@ int SDL_BlitSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst,
         int orig_h = srcrect ? srcrect->h : src->h;
         int orig_y = dstrect ? dstrect->y : 0;
         if (orig_y + orig_h > clip_bottom && d_rect.h < orig_h) {
-            printf("[CLIP_APPLIED] orig_y=%d orig_h=%d clip_bot=%d -> clipped_y=%d clipped_h=%d\n",
+            DBG_PRINTF("[CLIP_APPLIED] orig_y=%d orig_h=%d clip_bot=%d -> clipped_y=%d clipped_h=%d\\n",
                 orig_y, orig_h, clip_bottom, d_rect.y, d_rect.h);
             clipped_blit_debug++;
         }
@@ -599,7 +600,7 @@ int SDL_BlitSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst,
     // Debug print for blit (throttled)
     static int blit_debug_count = 0;
     if (blit_debug_count < 20) {
-        printf("Blit: %dx%d bpp:%d->%d key:%d val:%d map:%d dst_pal=%p\n", 
+        DBG_PRINTF("Blit: %dx%d bpp:%d->%d key:%d val:%d map:%d dst_pal=%p\n", 
             s_rect.w, s_rect.h, src_bpp, dst_bpp, src->use_colorkey, src->colorkey, use_palette_map,
             (void*)(dst->format ? dst->format->palette : NULL));
         blit_debug_count++;
@@ -654,13 +655,13 @@ int SDL_BlitSurface(SDL_Surface *src, const SDL_Rect *srcrect, SDL_Surface *dst,
             // Debug: print once per blit
             static int rgba_blit_count = 0;
             if (y == 0 && rgba_blit_count < 10) {
-                printf("[RGBA->8bpp] %dx%d dst_pal=%p ncolors=%d blend=%d alphaMod=%d\n",
+                DBG_PRINTF("[RGBA->8bpp] %dx%d dst_pal=%p ncolors=%d blend=%d alphaMod=%d\n",
                        s_rect.w, s_rect.h, (void*)dst_pal, 
                        dst_pal ? dst_pal->ncolors : 0,
                        src->blendMode, src->alphaMod);
                 if (s_rect.w > 0) {
                     Uint32 pix = s_row_32[0];
-                    printf("[RGBA->8bpp] first pixel=0x%08lx (r=%d g=%d b=%d a=%d)\n",
+                    DBG_PRINTF("[RGBA->8bpp] first pixel=0x%08lx (r=%d g=%d b=%d a=%d)\n",
                            (unsigned long)pix, (int)(pix&0xFF), (int)((pix>>8)&0xFF),
                            (int)((pix>>16)&0xFF), (int)((pix>>24)&0xFF));
                 }
@@ -933,15 +934,15 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
     // characteristic 00 00 00 03 striping pattern. Keep it pinned to 8bpp.
     rp2350_fixup_onscreen_surface_format(onscreen_surface_, "SDL_UpdateTexture");
     if (frame_count == 1) {
-        printf("SDL_UpdateTexture: first frame src=%p pitch=%d dst=%p fb=%p w=%d h=%d out_h=%d dst_pitch=%d\n",
+        DBG_PRINTF("SDL_UpdateTexture: first frame src=%p pitch=%d dst=%p fb=%p w=%d h=%d out_h=%d dst_pitch=%d\\n",
                src, pitch, dst, graphics_get_buffer(), w, h, output_height, dst_pitch);
         if (onscreen_surface_ && onscreen_surface_->pixels) {
-            printf("SDL_UpdateTexture: onscreen_surface_ pixels=%p pitch=%d bpp=%u\n",
+            DBG_PRINTF("SDL_UpdateTexture: onscreen_surface_ pixels=%p pitch=%d bpp=%u\\n",
                    onscreen_surface_->pixels,
                    onscreen_surface_->pitch,
                    (unsigned)(onscreen_surface_->format ? onscreen_surface_->format->BitsPerPixel : 0));
             if (pixels != onscreen_surface_->pixels || pitch != onscreen_surface_->pitch) {
-                printf("SDL_UpdateTexture: WARNING: update src/pitch do not match onscreen_surface_\n");
+                DBG_PRINTF("SDL_UpdateTexture: WARNING: update src/pitch do not match onscreen_surface_\\n");
             }
         }
         gpio_init(25);
@@ -949,7 +950,7 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
         gpio_put(25, 1);
     }
     if (pitch != last_pitch) {
-        printf("SDL_UpdateTexture: pitch change frame=%d pitch=%d (was %d) pixels=%p rect=%p\n",
+        DBG_PRINTF("SDL_UpdateTexture: pitch change frame=%d pitch=%d (was %d) pixels=%p rect=%p\\n",
                frame_count, pitch, last_pitch, pixels, (const void *)rect);
         last_pitch = pitch;
     }
@@ -962,13 +963,13 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
         const uint8_t *b = (const uint8_t *)pixels;
         // Dump first 32 bytes of the first two rows (or fewer if pitch is small).
         const int n = (pitch < 32) ? pitch : 32;
-        printf("SDL_UpdateTexture: src row0 first %d bytes:", n);
-        for (int i = 0; i < n; ++i) printf(" %02X", b[i]);
-        printf("\n");
+        DBG_PRINTF("SDL_UpdateTexture: src row0 first %d bytes:", n);
+        for (int i = 0; i < n; ++i) DBG_PRINTF(" %02X", b[i]);
+        DBG_PRINTF("\\n");
         if (pitch >= n) {
-            printf("SDL_UpdateTexture: src row1 first %d bytes:", n);
-            for (int i = 0; i < n; ++i) printf(" %02X", b[pitch + i]);
-            printf("\n");
+            DBG_PRINTF("SDL_UpdateTexture: src row1 first %d bytes:", n);
+            for (int i = 0; i < n; ++i) DBG_PRINTF(" %02X", b[pitch + i]);
+            DBG_PRINTF("\\n");
         }
     }
 #endif
@@ -990,7 +991,7 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
     const int src_bpp = (pitch == w * 4) ? 4 : ((pitch == w * 3) ? 3 : ((pitch == w * 2) ? 2 : 1));
 
     if (frame_count <= 3 && src && pitch > 0) {
-        printf("SDL_UpdateTexture: frame=%d inferred src_bpp=%d\n", frame_count, src_bpp);
+        DBG_PRINTF("SDL_UpdateTexture: frame=%d inferred src_bpp=%d\\n", frame_count, src_bpp);
         if (src_bpp == 1) {
             // Full-frame min/max and a simple hash to detect periodic corruption.
             uint8_t mn = 255, mx = 0;
@@ -1005,15 +1006,15 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
                     hsh *= 16777619u;
                 }
             }
-            printf("SDL_UpdateTexture: frame=%d src full min=%u max=%u fnv=0x%08lx\n",
+            DBG_PRINTF("SDL_UpdateTexture: frame=%d src full min=%u max=%u fnv=0x%08lx\\n",
                    frame_count, (unsigned)mn, (unsigned)mx, (unsigned long)hsh);
 
             // Dump a compact sample from the middle row to spot stripe patterns.
             const int sample_y = h / 2;
             const uint8_t *mid = (const uint8_t *)src + sample_y * pitch;
-            printf("SDL_UpdateTexture: frame=%d src row%d first 32:", frame_count, sample_y);
-            for (int i = 0; i < 32; ++i) printf(" %02X", mid[i]);
-            printf("\n");
+            DBG_PRINTF("SDL_UpdateTexture: frame=%d src row%d first 32:", frame_count, sample_y);
+            for (int i = 0; i < 32; ++i) DBG_PRINTF(" %02X", mid[i]);
+            DBG_PRINTF("\\n");
         }
     }
 
@@ -1082,9 +1083,9 @@ int SDL_UpdateTexture(SDL_Texture *texture, const SDL_Rect *rect, const void *pi
     if (frame_count == 1) {
         // Sanity: show what we actually wrote into the framebuffer.
         const int n = (dst_pitch < 32) ? dst_pitch : 32;
-        printf("SDL_UpdateTexture: dst row%u first %d bytes:", (unsigned)0, n);
-        for (int i = 0; i < n; ++i) printf(" %02X", dst[y_offset * dst_pitch + i]);
-        printf("\n");
+        DBG_PRINTF("SDL_UpdateTexture: dst row%u first %d bytes:", (unsigned)0, n);
+        for (int i = 0; i < n; ++i) DBG_PRINTF(" %02X", dst[y_offset * dst_pitch + i]);
+        DBG_PRINTF("\\n");
     }
 
     // Bottom-row pixel heartbeat: not overwritten by the 320x200 copy.
@@ -1178,11 +1179,11 @@ static bool g_audio_paused = true;
 
 int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
     if (!desired || !desired->callback) {
-        printf("SDL_OpenAudio: invalid parameters\n");
+        DBG_PRINTF("SDL_OpenAudio: invalid parameters\\n");
         return -1;
     }
 
-    printf("SDL_OpenAudio: freq=%d ch=%d samples=%d\n",
+    DBG_PRINTF("SDL_OpenAudio: freq=%d ch=%d samples=%d\\n",
            desired->freq, desired->channels, desired->samples);
 
     // Store the audio spec
@@ -1194,7 +1195,7 @@ int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
             desired->channels,
             (audio_callback_fn)desired->callback,
             desired->userdata)) {
-        printf("SDL_OpenAudio: audio_i2s_driver_init failed\n");
+        DBG_PRINTF("SDL_OpenAudio: audio_i2s_driver_init failed\\n");
         return -1;
     }
 
@@ -1208,7 +1209,7 @@ int SDL_OpenAudio(SDL_AudioSpec *desired, SDL_AudioSpec *obtained) {
     g_audio_initialized = true;
     g_audio_paused = true;  // Start paused (SDL convention)
 
-    printf("SDL_OpenAudio: success\n");
+    DBG_PRINTF("SDL_OpenAudio: success\\n");
     return 0;
 }
 
@@ -1217,13 +1218,13 @@ void SDL_PauseAudio(int pause_on) {
 
     if (pause_on) {
         if (!g_audio_paused) {
-            printf("SDL_PauseAudio: pausing\n");
+            DBG_PRINTF("SDL_PauseAudio: pausing\\n");
             audio_i2s_driver_set_enabled(false);
             g_audio_paused = true;
         }
     } else {
         if (g_audio_paused) {
-            printf("SDL_PauseAudio: unpausing\n");
+            DBG_PRINTF("SDL_PauseAudio: unpausing\\n");
             audio_i2s_driver_set_enabled(true);
             g_audio_paused = false;
         }
@@ -1232,7 +1233,7 @@ void SDL_PauseAudio(int pause_on) {
 
 void SDL_CloseAudio(void) {
     if (!g_audio_initialized) return;
-    printf("SDL_CloseAudio\n");
+    DBG_PRINTF("SDL_CloseAudio\\n");
     audio_i2s_driver_shutdown();
     g_audio_initialized = false;
     g_audio_paused = true;
@@ -1361,18 +1362,18 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode) {
     const bool do_print = (!printed);
     if (do_print) {
         printed = true;
-        printf("SDL_RWFromFile: file=%s mode=%s\n", file ? file : "(null)", mode ? mode : "(null)");
+        DBG_PRINTF("SDL_RWFromFile: file=%s mode=%s\\n", file ? file : "(null)", mode ? mode : "(null)");
     }
 
     FIL* fil = pop_fs_open(file, mode);
     if (!fil) {
-        printf("SDL_RWFromFile: open failed: %s\n", file);
+        DBG_PRINTF("SDL_RWFromFile: open failed: %s\\n", file);
         return NULL;
     }
 
     size_t file_size = (size_t)f_size(fil);
     if (do_print) {
-        printf("SDL_RWFromFile: size=%u bytes\n", (unsigned)file_size);
+        DBG_PRINTF("SDL_RWFromFile: size=%u bytes\\n", (unsigned)file_size);
     }
     if (file_size == 0) {
         pop_fs_close(fil);
@@ -1388,7 +1389,7 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode) {
     }
     if (!buffer) {
         if (do_print) {
-            printf("SDL_RWFromFile: buffer alloc failed (%u bytes)\n", (unsigned)file_size);
+            DBG_PRINTF("SDL_RWFromFile: buffer alloc failed (%u bytes)\\n", (unsigned)file_size);
         }
         pop_fs_close(fil);
         return NULL;
@@ -1397,7 +1398,7 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode) {
     size_t got = pop_fs_read(buffer, 1, file_size, fil);
     pop_fs_close(fil);
     if (do_print) {
-        printf("SDL_RWFromFile: read got=%u\n", (unsigned)got);
+        DBG_PRINTF("SDL_RWFromFile: read got=%u\\n", (unsigned)got);
     }
     if (got != file_size) {
         if (IS_PSRAM(buffer)) psram_free(buffer);
@@ -1414,7 +1415,7 @@ SDL_RWops *SDL_RWFromFile(const char *file, const char *mode) {
     // Note: if the buffer came from the PSRAM reusable file buffer, psram_free() is a no-op.
     rw->type = 2;
     if (do_print) {
-        printf("SDL_RWFromFile: rw ok type=%d\n", rw->type);
+        DBG_PRINTF("SDL_RWFromFile: rw ok type=%d\\n", rw->type);
     }
     return rw;
 }
@@ -1457,7 +1458,7 @@ SDL_Surface *IMG_Load(const char *file) {
     static bool printed = false;
     if (!printed) {
         printed = true;
-        printf("IMG_Load: %s\n", file);
+        DBG_PRINTF("IMG_Load: %s\n", file);
     }
 
     SDL_RWops *rw = SDL_RWFromFile(file, "rb");
@@ -1567,7 +1568,7 @@ Uint16 SDL_SwapBE16(Uint16 x) {
 int SDL_ShowSimpleMessageBox(Uint32 flags, const char *title, const char *message, SDL_Window *window) {
     (void)flags;
     (void)window;
-    printf("MessageBox: %s - %s\n", title ? title : "(null)", message ? message : "(null)");
+    DBG_PRINTF("MessageBox: %s - %s\n", title ? title : "(null)", message ? message : "(null)");
 #if RP_SDL_FEATURE_MESSAGEBOX
     // Blink LED rapidly to indicate error
     gpio_init(25);
@@ -1761,7 +1762,7 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
     const bool do_print = (!printed);
     if (do_print) {
         printed = true;
-        printf("IMG_Load_RW: enter type=%d\n", src->type);
+        DBG_PRINTF("IMG_Load_RW: enter type=%d\n", src->type);
     }
 
     // We primarily use memory-backed RWops on this platform.
@@ -1782,12 +1783,12 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
     }
 
     if (do_print) {
-        printf("IMG_Load_RW: png_size=%d\n", png_size);
+        DBG_PRINTF("IMG_Load_RW: png_size=%d\n", png_size);
     }
 
     int w = 0, h = 0, comp_in_file = 0;
     if (do_print) {
-        printf("IMG_Load_RW: stbi_load_from_memory...\n");
+        DBG_PRINTF("IMG_Load_RW: stbi_load_from_memory...\n");
     }
 
     // Decode PNG into a temporary PSRAM arena. stb_image allocates a large RGBA
@@ -1810,7 +1811,7 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
     }
 
     if (do_print) {
-        printf("IMG_Load_RW: decoded %dx%d comp=%d\n", w, h, comp_in_file);
+        DBG_PRINTF("IMG_Load_RW: decoded %dx%d comp=%d\n", w, h, comp_in_file);
     }
 
     // Fix black/dark fringes on assets with premultiplied alpha.
@@ -1822,7 +1823,7 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
         static bool printed_unpremul = false;
         if (do_print || !printed_unpremul) {
             printed_unpremul = true;
-            printf("IMG_Load_RW: unpremultiply alpha enabled for this image\n");
+            DBG_PRINTF("IMG_Load_RW: unpremultiply alpha enabled for this image\n");
         }
         rp_sdl_unpremultiply_rgba_inplace(rgba, pixel_count);
     }
@@ -1839,7 +1840,7 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
     }
 
     if (do_print) {
-        printf("IMG_Load_RW: surface ok pitch=%d\n", surf->pitch);
+        DBG_PRINTF("IMG_Load_RW: surface ok pitch=%d\n", surf->pitch);
     }
 
     // stb_image returns tightly packed RGBA, top-to-bottom, left-to-right.
@@ -1848,7 +1849,7 @@ SDL_Surface *IMG_Load_RW(SDL_RWops *src, int freesrc) {
     psram_set_temp_offset(temp_mark);
 
     if (do_print) {
-        printf("IMG_Load_RW: done\n");
+        DBG_PRINTF("IMG_Load_RW: done\n");
     }
 
     if (freesrc) SDL_RWclose(src);

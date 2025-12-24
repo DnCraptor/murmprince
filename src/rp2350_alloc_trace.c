@@ -1,4 +1,5 @@
 #include "rp2350_alloc_trace.h"
+#include "board_config.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -15,7 +16,7 @@ static inline void rp2350_trace_if_1552(const char *kind, size_t bytes, void *pt
 
     g_alloc_trace_in_hook = 1;
     void *caller = __builtin_return_address(0);
-    printf("ALLOC1552: %s bytes=%u ptr=%p at %s:%d caller=%p\n",
+    DBG_PRINTF("ALLOC1552: %s bytes=%u ptr=%p at %s:%d caller=%p\\n",
            kind, (unsigned)bytes, ptr, file ? file : "?", line, caller);
     g_alloc_trace_in_hook = 0;
 }

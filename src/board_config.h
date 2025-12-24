@@ -4,6 +4,19 @@
 #include "hardware/structs/sysinfo.h"
 #include "hardware/vreg.h"
 
+//=============================================================================
+// Debug Output Configuration
+//=============================================================================
+#ifndef MURMPRINCE_DEBUG
+#define MURMPRINCE_DEBUG 0
+#endif
+
+#if MURMPRINCE_DEBUG
+#define DBG_PRINTF(...) printf(__VA_ARGS__)
+#else
+#define DBG_PRINTF(...) ((void)0)
+#endif
+
 /*
  * Board Configuration Variants:
  * 
