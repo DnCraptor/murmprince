@@ -2359,6 +2359,15 @@ byte* digi_remaining_pos = NULL;
 // The remaining length.
 int digi_remaining_length = 0;
 
+#ifdef POP_RP2350
+// Streaming resampler state for RP2350 (to avoid huge pre-conversion memory usage)
+static byte* digi_src_samples = NULL;      // Original 8-bit samples
+static int digi_src_sample_count = 0;      // Total source samples
+static int digi_src_sample_rate = 0;       // Source sample rate (e.g., 11000)
+static float digi_src_position = 0.0f;     // Current fractional position in source
+static float digi_src_ratio = 0.0f;        // Source samples per output sample
+#endif
+
 // The properties of the audio device.
 SDL_AudioSpec* digi_audiospec = NULL;
 // The desired samplerate. Everything will be resampled to this.
@@ -2382,6 +2391,11 @@ void stop_digi(void) {
 	digi_buffer = NULL;
 	digi_remaining_length = 0;
 	digi_remaining_pos = NULL;
+#ifdef POP_RP2350
+	digi_src_samples = NULL;
+	digi_src_sample_count = 0;
+	digi_src_position = 0.0f;
+#endif
 	SDL_UnlockAudio();
 }
 
@@ -2491,6 +2505,65 @@ void play_speaker_sound(sound_buffer_type* buffer) {
 }
 
 void digi_callback(void *userdata, Uint8 *stream, int len) {
+#ifdef POP_RP2350
+	// Streaming resampler: convert 8-bit mono source to 16-bit stereo on-the-fly
+	if (digi_src_samples == NULL) {
+		memset(stream, digi_audiospec->silence, len);
+		return;
+	}
+	
+	int output_channels = digi_audiospec->channels;
+	int bytes_per_frame = sizeof(short) * output_channels;
+	int frames_requested = len / bytes_per_frame;
+	short* dest = (short*)stream;
+	int frames_filled = 0;
+	
+	if (is_sound_on) {
+		for (int i = 0; i < frames_requested; ++i) {
+			if (digi_src_position >= digi_src_sample_count - 1) {
+				break; // End of source
+			}
+			
+			int src_frame_0 = (int)digi_src_position;
+			float alpha = digi_src_position - src_frame_0;
+			
+			// Get 8-bit unsigned samples, convert to 16-bit signed
+			int sample_0 = (digi_src_samples[src_frame_0] | (digi_src_samples[src_frame_0] << 8)) - 32768;
+			int sample_1 = sample_0;
+			if (src_frame_0 + 1 < digi_src_sample_count) {
+				sample_1 = (digi_src_samples[src_frame_0 + 1] | (digi_src_samples[src_frame_0 + 1] << 8)) - 32768;
+			}
+			
+			// Linear interpolation
+			short interpolated = (short)((1.0f - alpha) * sample_0 + alpha * sample_1);
+			
+			// Output stereo
+			for (int ch = 0; ch < output_channels; ++ch) {
+				*dest++ = interpolated;
+			}
+			
+			digi_src_position += digi_src_ratio;
+			frames_filled++;
+		}
+	}
+	
+	// Fill remaining with silence
+	int bytes_filled = frames_filled * bytes_per_frame;
+	if (bytes_filled < len) {
+		memset((byte*)stream + bytes_filled, digi_audiospec->silence, len - bytes_filled);
+	}
+	
+	// If the sound ended, push an event
+	if (digi_playing && digi_src_position >= digi_src_sample_count - 1) {
+		SDL_Event event;
+		memset(&event, 0, sizeof(event));
+		event.type = SDL_USEREVENT;
+		event.user.code = userevent_SOUND;
+		digi_playing = 0;
+		SDL_PushEvent(&event);
+	}
+#else
+	// Original pre-converted path for desktop
 	// Don't go over the end of either the input or the output buffer.
 	size_t copy_len = MIN(len, digi_remaining_length);
 	//printf("digi_callback(): copy_len = %d\n", copy_len);
@@ -2517,6 +2590,7 @@ void digi_callback(void *userdata, Uint8 *stream, int len) {
 	// Advance the pointer.
 	digi_remaining_length -= copy_len;
 	digi_remaining_pos += copy_len;
+#endif
 }
 
 void ogg_callback(void *userdata, Uint8 *stream, int len) {
@@ -2663,17 +2737,22 @@ void init_digi() {
 		digi_unavailable = 1;
 		return;
 	}
+	DBG_PRINTF("[init_digi] SDL_OpenAudio succeeded, setting digi_audiospec\n");
 	//SDL_PauseAudio(0);
 	digi_audiospec = desired;
+	DBG_PRINTF("[init_digi] done\n");
 }
 
 const int sound_channel = 0;
 const int max_sound_id = 58;
 
 void load_sound_names() {
+	DBG_PRINTF("[load_sound_names] entering\n");
 	const char* names_path = locate_file("data/music/names.txt");
+	DBG_PRINTF("[load_sound_names] names_path=%s\n", names_path ? names_path : "(null)");
 	if (sound_names != NULL) return;
 	FILE* fp = fopen(names_path,"rt");
+	DBG_PRINTF("[load_sound_names] fopen result=%p\n", (void*)fp);
 	if (fp==NULL) return;
 	sound_names = (char**) calloc(sizeof(char*) * max_sound_id, 1);
 	while (!feof(fp)) {
@@ -2704,8 +2783,9 @@ sound_buffer_type* convert_digi_sound(sound_buffer_type* digi_buffer);
 
 sound_buffer_type* load_sound(int index) {
 	sound_buffer_type* result = NULL;
-	//printf("load_sound(%d)\n", index);
+	DBG_PRINTF("[load_sound] index=%d\\n", index);
 	init_digi();
+	DBG_PRINTF("[load_sound] after init_digi, enable_music=%d digi_unavailable=%d\\n", enable_music, digi_unavailable);
 	if (enable_music && !digi_unavailable && result == NULL && index >= 0 && index < max_sound_id) {
 		//printf("Trying to load from music folder\n");
 
@@ -2762,14 +2842,26 @@ sound_buffer_type* load_sound(int index) {
 		}
 	}
 	if (result == NULL) {
-		//printf("Trying to load from DAT\n");
+		DBG_PRINTF("[load_sound] loading from DAT, index+10000=%d\\n", index + 10000);
 		result = (sound_buffer_type*) load_from_opendats_alloc(index + 10000, "bin", NULL, NULL);
+		DBG_PRINTF("[load_sound] load_from_opendats_alloc returned %p\\n", (void*)result);
 	}
+#ifdef POP_RP2350
+	// On RP2350: keep raw digi sounds, resample on-the-fly during playback to save PSRAM
+	// Just log the sound info without converting
 	if (result != NULL && (result->type & 7) == sound_digi) {
+		DBG_PRINTF("[load_sound] keeping raw digi sound (streaming mode)\\n");
+	}
+#else
+	if (result != NULL && (result->type & 7) == sound_digi) {
+		DBG_PRINTF("[load_sound] converting digi sound\\n");
 		sound_buffer_type* converted = convert_digi_sound(result);
+		DBG_PRINTF("[load_sound] freeing original buffer\\n");
 		free(result);
 		result = converted;
+		DBG_PRINTF("[load_sound] conversion done, result=%p\\n", (void*)result);
 	}
+#endif
 	if (result == NULL && !skip_normal_data_files) {
 		fprintf(stderr, "Failed to load sound %d '%s'\n", index, sound_name(index));
 	}
@@ -2832,24 +2924,37 @@ bool determine_wave_version(sound_buffer_type *buffer, waveinfo_type* waveinfo) 
 }
 
 sound_buffer_type* convert_digi_sound(sound_buffer_type* digi_buffer) {
+	DBG_PRINTF("[convert_digi_sound] entering\\n");
 	init_digi();
 	if (digi_unavailable) return NULL;
 	waveinfo_type waveinfo;
 	if (false == determine_wave_version(digi_buffer, &waveinfo)) return NULL;
+	DBG_PRINTF("[convert_digi_sound] wave: rate=%d size=%d count=%d\\n", waveinfo.sample_rate, waveinfo.sample_size, waveinfo.sample_count);
 
 	float freq_ratio = (float)waveinfo.sample_rate /  (float)digi_audiospec->freq;
 
 	int source_length = waveinfo.sample_count;
 	int expanded_frames = source_length * digi_audiospec->freq / waveinfo.sample_rate;
 	int expanded_length = expanded_frames * 2 * sizeof(short);
+	DBG_PRINTF("[convert_digi_sound] expanded_frames=%d expanded_length=%d\\n", expanded_frames, expanded_length);
+#ifdef POP_RP2350
+	sound_buffer_type* converted_buffer = pop_heap_alloc(sizeof(sound_buffer_type) + expanded_length);
+#else
 	sound_buffer_type* converted_buffer = malloc(sizeof(sound_buffer_type) + expanded_length);
+#endif
+	DBG_PRINTF("[convert_digi_sound] converted_buffer=%p\\n", (void*)converted_buffer);
 
 	converted_buffer->type = sound_digi_converted;
 	converted_buffer->converted.length = expanded_length;
 
 	byte* source = waveinfo.samples;
 	//short* dest = converted_buffer->converted.samples;
+#ifdef POP_RP2350
+	short* dest = pop_heap_alloc(sizeof(short) * converted_buffer->converted.length);
+#else
 	short* dest = malloc(sizeof(short) * converted_buffer->converted.length);
+#endif
+	DBG_PRINTF("[convert_digi_sound] dest=%p, starting loop\\n", (void*)dest);
         converted_buffer->converted.samples = dest;
 
 	for (int i = 0; i < expanded_frames; ++i) {
@@ -2870,6 +2975,7 @@ sound_buffer_type* convert_digi_sound(sound_buffer_type* digi_buffer) {
 			*dest++ = interpolated_sample;
 		}
 	}
+	DBG_PRINTF("[convert_digi_sound] loop done\\n");
 
 	return converted_buffer;
 }
@@ -2882,6 +2988,26 @@ void play_digi_sound(sound_buffer_type* buffer) {
 	stop_digi();
 //	stop_sounds();
 	//printf("play_digi_sound(): called\n");
+#ifdef POP_RP2350
+	// Streaming mode: accept raw digi sound and set up streaming resampler
+	if ((buffer->type & 7) != sound_digi) {
+		printf("play_digi_sound: expected raw digi sound, got type %d\n", buffer->type & 7);
+		return;
+	}
+	waveinfo_type waveinfo;
+	if (!determine_wave_version(buffer, &waveinfo)) {
+		printf("play_digi_sound: failed to determine wave version\n");
+		return;
+	}
+	SDL_LockAudio();
+	digi_src_samples = waveinfo.samples;
+	digi_src_sample_count = waveinfo.sample_count;
+	digi_src_sample_rate = waveinfo.sample_rate;
+	digi_src_position = 0.0f;
+	digi_src_ratio = (float)waveinfo.sample_rate / (float)digi_audiospec->freq;
+	digi_playing = 1;
+	SDL_UnlockAudio();
+#else
 	if ((buffer->type & 7) != sound_digi_converted) {
 		printf("Tried to play unconverted digi sound.\n");
 		return;
@@ -2892,6 +3018,7 @@ void play_digi_sound(sound_buffer_type* buffer) {
 	digi_remaining_length = buffer->converted.length;
 	digi_remaining_pos = digi_buffer;
 	SDL_UnlockAudio();
+#endif
 	SDL_PauseAudio(0);
 }
 
@@ -4675,6 +4802,9 @@ void process_events() {
 void idle() {
 	process_events();
 	update_screen();
+#ifdef POP_RP2350
+	SDL_AudioPump();  // Pump audio buffers (polled I2S on RP2350)
+#endif
 }
 
 void do_simple_wait(int timer_index) {
@@ -4685,6 +4815,9 @@ void do_simple_wait(int timer_index) {
 	while (! has_timer_stopped(timer_index)) {
 		SDL_Delay(1);
 		process_events();
+#ifdef POP_RP2350
+		SDL_AudioPump();
+#endif
 	}
 }
 
@@ -4697,6 +4830,9 @@ int do_wait(int timer_index) {
 	while (! has_timer_stopped(timer_index)) {
 		SDL_Delay(1);
 		process_events();
+#ifdef POP_RP2350
+		SDL_AudioPump();
+#endif
 		int key = do_paused();
 		if (key != 0 && (word_1D63A != 0 || key == 0x1B)) return 1;
 	}

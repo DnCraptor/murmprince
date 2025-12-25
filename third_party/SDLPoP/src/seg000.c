@@ -1061,15 +1061,19 @@ void anim_tile_modif() {
 
 // seg000:0B72
 void load_sounds(int first,int last) {
+	DBG_PRINTF("[load_sounds] first=%d last=%d\n", first, last);
 	dat_type* ibm_dat = NULL;
 	dat_type* digi1_dat = NULL;
 //	dat_type* digi2_dat = NULL;
 	dat_type* digi3_dat = NULL;
 	dat_type* midi_dat = NULL;
+	DBG_PRINTF("[load_sounds] opening IBM_SND1.DAT\n");
 	ibm_dat = open_dat("IBM_SND1.DAT", 0);
 	if (sound_flags & sfDigi) {
+		DBG_PRINTF("[load_sounds] opening DIGISND1.DAT\n");
 		digi1_dat = open_dat("DIGISND1.DAT", 0);
 //		digi2_dat = open_dat("DIGISND2.DAT", 0);
+		DBG_PRINTF("[load_sounds] opening DIGISND3.DAT\n");
 		digi3_dat = open_dat("DIGISND3.DAT", 0);
 	}
 	if (sound_flags & sfMidi) {
@@ -2281,13 +2285,12 @@ void clear_screen_and_sounds() {
 // seg000:1F7B
 void parse_cmdline_sound() {
 	#ifdef POP_RP2350
-	// RP2350 bring-up: no audio device yet. Also avoid any argument parsing edge
-	// cases on embedded startup; just force sound off.
-	is_sound_on = 0;
-	enable_music = 0;
-	sound_flags = 0;
-	// Keep a sane default mode to avoid later assumptions.
+	// RP2350: Use digital (wave) sounds via I2S audio output.
+	// MIDI music uses OPL3 software synthesis.
+	sound_flags = sfDigi | sfMidi;  // Enable digital sounds and MIDI music
 	sound_mode = smSblast;
+	is_sound_on = 1;       // Sound enabled by default
+	enable_music = 1;      // Enable MIDI music (OPL3 synthesis)
 	return;
 	#endif
 
@@ -2321,8 +2324,11 @@ void free_all_sounds() {
 }
 
 void load_all_sounds() {
+	DBG_PRINTF("[load_all_sounds] entering\n");
 	if (!use_custom_levelset || always_use_original_music) {
+		DBG_PRINTF("[load_all_sounds] loading standard sounds 0-43\n");
 		load_sounds(0, 43);
+		DBG_PRINTF("[load_all_sounds] loading optional sounds 43-56\n");
 		load_opt_sounds(43, 56); //added
 	} else {
 		// Put it here instead to use data/ for all music and sounds, not just for those in data/music/.
