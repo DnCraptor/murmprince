@@ -2053,30 +2053,30 @@ void show_title() {
 	play_sound_from_buffer(sound_pointers[sound_54_intro_music]); // main theme
 	start_timer(timer_0, 0x82);
 	draw_full_image(TITLE_PRESENTS);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 
 	start_timer(timer_0, 0xCD);
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 
 	start_timer(timer_0, 0x41);
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
 	draw_full_image(TITLE_GAME);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 
 	start_timer(timer_0, 0x10E);
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 
 	start_timer(timer_0, 0xEB); // TITLE_POP + TITLE_MECHNER together (original timing)
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
 	draw_full_image(TITLE_POP);
 	draw_full_image(TITLE_MECHNER);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 
 #ifdef POP_RP2350
 	uint32_t t0 = time_us_32() / 1000;  // Start time in ms
@@ -2086,7 +2086,7 @@ void show_title() {
 	method_1_blit_rect(onscreen_surface_, offscreen_surface, &rect_titles, &rect_titles, blitters_0_no_transp);
 	draw_full_image(TITLE_MAIN);
 	draw_full_image(TITLE_POP);
-	do_wait(timer_0);
+	if (do_wait(timer_0)) goto title_skip;
 #ifdef POP_RP2350
 	uint32_t t1 = time_us_32() / 1000;
 	printf("[TITLE @%ums] Timer done (+%ums), check_sound=%d\n", t1, t1-t0, check_sound_playing());
@@ -2162,17 +2162,17 @@ void show_title() {
 		delay_ticks(1);
 	}
 	transition_ltr();
-	pop_wait(timer_0, 0x78);
+	if (pop_wait(timer_0, 0x78)) goto title_skip;
 	draw_full_image(STORY_FRAME);
 	draw_full_image(STORY_CREDITS);
 	transition_ltr();
-	pop_wait(timer_0, 0x168);
+	if (pop_wait(timer_0, 0x168)) goto title_skip;
 	if (hof_count) {
 		draw_full_image(STORY_FRAME);
 		draw_full_image(HOF_POP);
 		show_hof();
 		transition_ltr();
-		pop_wait(timer_0, 0xF0);
+		if (pop_wait(timer_0, 0xF0)) goto title_skip;
 	}
 	current_target_surface = onscreen_surface_;
 	while (check_sound_playing()) {
@@ -2180,6 +2180,17 @@ void show_title() {
 		do_paused();
 		delay_ticks(1);
 	}
+	
+title_skip:
+#ifdef POP_RP2350
+	// CRITICAL: Enable loading mode BEFORE any cleanup/loading
+	// This prevents HDMI signal loss when user skips title screen with keypress
+	// NOTE: Do NOT call stop_sounds() here - it causes HDMI dropout!
+	// The audio will stop naturally when load_intro clears buffers.
+	extern void graphics_set_loading_mode(bool enable);
+	graphics_set_loading_mode(true);
+	printf("[TITLE] User skip: loading mode enabled (sounds will stop during load)\n");
+#endif
 #ifdef POP_RP2350
 	extern uint32_t graphics_get_hdmi_underrun_count(void);
 	extern uint32_t graphics_get_buffer_swap_count(void);
