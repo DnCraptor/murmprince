@@ -18,7 +18,7 @@ Both boards provide all necessary peripherals out of the box—no additional wir
 - Native 320×200 HDMI video output via PIO
 - 8MB QSPI PSRAM support for game data
 - SD card support for game resources and saved games
-- PS/2 keyboard input
+- PS/2 and USB keyboard input
 - I2S audio output
 
 ## Hardware Requirements
@@ -27,7 +27,7 @@ Both boards provide all necessary peripherals out of the box—no additional wir
 - **8MB QSPI PSRAM** (mandatory!)
 - **HDMI connector** (directly connected via resistors, no HDMI encoder needed)
 - **SD card module** (SPI mode)
-- **PS/2 keyboard** (directly connected)
+- **PS/2 or USB keyboard**
 - **I2S DAC module** (e.g., TDA1387) for audio output
 
 ### PSRAM Options
