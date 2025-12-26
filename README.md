@@ -160,7 +160,7 @@ picotool load -f build-make/murmprince.uf2
 
 When upgrading from version 1.00, copy the `third_party/SDLPoP/data/midi_cache` directory to your SD card's `data` folder.
 
-**Note:** The MIDI cache contains pre-rendered audio for all MIDI music tracks (~62 MB). If the cache files are missing or outdated, they will be regenerated automatically during gameplay. Regeneration takes additional time during level loading.
+**Note:** The MIDI cache contains pre-rendered audio for all MIDI music tracks (~62 MB). If the cache files are missing or outdated, they will be regenerated automatically during gameplay. Regeneration takes additional time during game loading.
 
 ## Controls
 
