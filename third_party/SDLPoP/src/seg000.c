@@ -1678,15 +1678,57 @@ void play_sound(int sound_id) {
 	}
 }
 
+#ifdef POP_RP2350
+// Helper: check if a sound is a digi/speaker sound (not MIDI music)
+static int is_digi_or_speaker_sound(int sound_id) {
+	if (sound_id < 0 || sound_pointers[sound_id] == NULL) return 0;
+	int type = sound_pointers[sound_id]->type & 7;
+	return (type == sound_speaker || type == sound_digi || type == sound_digi_converted);
+}
+#endif
+
 // seg000:1304
 void play_next_sound() {
 	if (next_sound >= 0) {
+#ifdef POP_RP2350
+		// RP2350 FIX: Allow digital sounds to play simultaneously with MIDI music.
+		// The audio callback blends digi and MIDI together, so we only need to check
+		// if another digi sound is playing (not MIDI music).
+		// This fixes in-game sounds not playing (falling, sword, fighting).
+		extern short digi_playing;
+		int next_is_digi = is_digi_or_speaker_sound(next_sound);
+		int can_play = 0;
+		
+		if (next_is_digi) {
+			// For digi sounds: only block if another digi sound is playing and not interruptible
+			if (!digi_playing) {
+				can_play = 1;  // No digi sound playing, can play
+			} else if (is_digi_or_speaker_sound(current_sound) && 
+			           sound_interruptible[current_sound] != 0 && 
+			           sound_prio_table[next_sound] <= sound_prio_table[current_sound]) {
+				can_play = 1;  // Current digi sound is interruptible and new one has higher priority
+			}
+		} else {
+			// For MIDI sounds: use original logic
+			if (!check_sound_playing() ||
+			    (sound_interruptible[current_sound] != 0 && sound_prio_table[next_sound] <= sound_prio_table[current_sound])
+			) {
+				can_play = 1;
+			}
+		}
+		
+		if (can_play) {
+			current_sound = next_sound;
+			play_sound_from_buffer(sound_pointers[current_sound]);
+		}
+#else
 		if (!check_sound_playing() ||
 			(sound_interruptible[current_sound] != 0 && sound_prio_table[next_sound] <= sound_prio_table[current_sound])
 		) {
 			current_sound = next_sound;
 			play_sound_from_buffer(sound_pointers[current_sound]);
 		}
+#endif
 	}
 	next_sound = -1;
 }
