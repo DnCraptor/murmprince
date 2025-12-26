@@ -2080,7 +2080,14 @@ void show_title() {
 #endif
 	pop_wait(timer_0, 0x258);
 #ifdef POP_RP2350
-	printf("[TITLE @%ums] pop_wait done, fading out story text with hardware fade\n", time_us_32() / 1000);
+	printf("[TITLE @%ums] pop_wait done, waiting for story music to finish...\n", time_us_32() / 1000);
+	// Wait for story music to finish BEFORE fading out
+	while (check_sound_playing()) {
+		idle();
+		do_paused();
+		delay_ticks(1);
+	}
+	printf("[TITLE @%ums] music done, fading out story text with hardware fade\n", time_us_32() / 1000);
 	// Use hardware fade to fade out the story text screen BEFORE enabling loading mode
 	extern void graphics_set_loading_mode(bool enable);
 	extern void graphics_set_fade_level(int level, int speed);
